@@ -52,6 +52,15 @@ ePCR, SBAR, and both dashboards are derived views over this log. Agents read the
 | `screens/` | C | Medic view + hospital view (two web apps or two routes) |
 | `eyes/` | D | Gemini Live watcher page + simulated monitor + demo assets |
 
+## Git workflow — branches per phase, worktrees per parallel agent
+
+- **Phase 0 → straight to `main`.** The contract (schema, dirs, this doc) must be pullable by everyone immediately.
+- **Phase 1 → one branch per lane:** `p1-voice`, `p1-brain`, `p1-screens`, `p1-eyes`. All work — yours or your AI agent's — happens on your lane branch, only inside your lane directory. Push to origin every ~30 min (laptop-dies insurance). **Merge all four to `main` at 3:30.** Directory ownership makes these merges conflict-free by construction; the branches exist so half-broken WIP never blocks another lane pulling `main`.
+- **Phase 2 → `p2-integration`**, branched from `main` after the 3:30 merges. Cross-lane edits are allowed here and only here. Merge to `main` at 4:30, when the end-to-end scripted run has passed once.
+- **Phase 3 → freeze:** tag `demo-freeze` on `main` at 5:30. After the tag nothing merges without all four agreeing; emergency fix = `p3-hotfix` branch, then re-tag.
+- **AI-agent rules (Claude Code and friends):** an agent session runs on your lane branch and may only modify files inside your lane directory. Running two or more agents in parallel on one machine: give each its own worktree + sub-branch so they never share a checkout — `git worktree add ../mediBot-eyes-monitor p1-eyes-monitor` (Claude Code's built-in worktree isolation does the same automatically). Small frequent commits, no force-pushes ever, `.env` never staged.
+- **The demo runs from the tag:** at 5:30, `git checkout demo-freeze` on MB1/MB2/MB3 so every machine runs identical code.
+
 ## Locked requirements
 
 - **R1 — Ambient capture.** Speech near the mic becomes `utterance` events. **Verification:** speak one sentence; a row with `ts` and text appears in the Convex dashboard within 3s.
@@ -75,7 +84,7 @@ ePCR, SBAR, and both dashboards are derived views over this log. Agents read the
 - `brain/`: init Convex project, create `events` table + `append` mutation + `timeline` query. **Done when:** `npx convex dev` runs and a hand-inserted test event shows in the dashboard.
 - Share Convex deployment URL + the Gemini key into each lane's `.env` (and `npx convex env set GEMINI_API_KEY` for agents). **Done when:** all four can insert a test event from their own machine.
 
-### Phase 1 — Lanes in parallel (12:45 – 3:30). Each block below is self-contained; pick yours up independently.
+### Phase 1 — Lanes in parallel (12:45 – 3:30). Each block below is self-contained; pick yours up independently on your `p1-<lane>` branch (see Git workflow above).
 
 **Lane A — `voice/` (Voice I/O)**
 - A1. 15-min timebox: does the VoiceOS SDK expose a continuous transcript stream? Post the verdict in chat. **Done when:** data-plane decision (VoiceOS vs Gemini Live "ears" session) is posted.

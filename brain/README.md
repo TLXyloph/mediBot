@@ -4,6 +4,70 @@ Everything couples through the append-only `events` table. ePCR, SBAR, patient
 state, and both dashboards are derived views over it. Nobody mutates or deletes
 events; corrections are new `correction` events referencing the original via `refs`.
 
+## Connection details (LIVE — share these with screens/ and eyes/)
+
+The deployment is **public-function** access: clients connect with just the URL,
+no token. These values are safe to commit; they are **not** secrets.
+
+| Key | Value |
+|---|---|
+| Convex URL (client → this is what `screens/` + `eyes/` use) | `https://amicable-panther-654.convex.cloud` |
+| HTTP Actions / site URL | `https://amicable-panther-654.convex.site` |
+| Deployment | `dev:amicable-panther-654` |
+| Team / Project | `shubham-shinde` / `hack-with-voiceos` |
+| Dashboard | https://dashboard.convex.dev/d/amicable-panther-654 |
+
+Client setup in another lane:
+
+```bash
+# screens/ and eyes/ each put this in their own .env (NOT committed):
+echo 'VITE_CONVEX_URL=https://amicable-panther-654.convex.cloud' >> .env.local
+```
+```ts
+import { ConvexReactClient } from "convex/react";
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
+```
+
+### Secrets (NEVER commit these — set as Convex env vars only)
+
+Agent code reads these from `process.env` inside Convex actions, so they live on
+the deployment, not in any file. Values are **not** stored in this repo:
+
+```bash
+npx convex env set LLM_PROVIDER gemini
+npx convex env set GEMINI_API_KEY <paid-gemini-key>   # the actual key — keep it out of git/screen-share
+npx convex env set GEMINI_MODEL  gemini-2.5-flash
+# insurance flip to OpenAI is config, not code:
+# npx convex env set LLM_PROVIDER openai && npx convex env set OPENAI_API_KEY <key>
+```
+
+`npx convex env list` shows what's set (names only). `brain/.env.local` (deployment
+config, gitignored) is written by `npx convex dev` — don't commit it.
+
+## Schema (`events` table — the whole contract)
+
+```ts
+events: {
+  ts:        number,                      // epoch ms; defaults to now on append
+  type:      "utterance" | "vital" | "intervention" | "medication" | "symptom"
+           | "correction" | "flag" | "protocol_state" | "timer" | "sbar_update",
+  source:    "voice" | "vision" | "agent" | "system",
+  role?:     "medic" | "patient" | "partner" | "bystander",
+  payload:   any,                         // shape depends on type (see below)
+  conf?:     number,                      // 0..1 model confidence
+  refs?:     string[],                    // event ids this one references (corrections, provenance)
+  processed?: boolean,                    // agent idempotency marker; not part of the public contract
+}
+// indexes: by_ts [ts]  ·  by_type [type]
+```
+
+Common `payload` shapes: `medication {name}` · `symptom {text, allergy?}` ·
+`vital {name, value}` · `intervention {name}` · `flag {reason, ...}` ·
+`protocol_state {name}` · `sbar_update {situation, background, assessment, recommendation}`.
+
+Append-only. Nobody mutates or deletes; a `correction` event carries the new value
+and points at the original via `refs`.
+
 ## Run it (Phase 0)
 
 ```bash
@@ -13,14 +77,7 @@ npx convex dev          # interactive: logs in, creates deployment, writes .env.
 npx convex run seed:demo # optional: insert scripted demo beats
 ```
 
-Share the `CONVEX_URL` from `brain/.env.local` with `screens/` and `eyes/` — that's the
-deployment they connect to. Agent secrets are Convex env vars, not local `.env`:
-
-```bash
-npx convex env set LLM_PROVIDER gemini
-npx convex env set GEMINI_API_KEY <paid-key>
-npx convex env set GEMINI_MODEL  gemini-2.5-flash
-```
+Connection URL + agent secrets are documented in **Connection details** above.
 
 ## Function-name contract (for `anyApi` callers in screens/ and eyes/)
 

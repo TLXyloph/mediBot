@@ -5,7 +5,7 @@
 // recovery for ASR splitting commands across segments).
 
 import { makeEvent, type MediBotEvent } from "./contract.js";
-import { parseCommand, commandToEvents, type Command } from "./grammar.js";
+import { parseCommand, commandToEvents, extractEmbedded, type Command } from "./grammar.js";
 import type { EventSink } from "./sink.js";
 
 const WAKE_HANGOVER_MS = 4000;
@@ -40,9 +40,27 @@ export function createPipeline(sink: EventSink): Pipeline {
       return [];
     }
 
-    const events = cmd
-      ? commandToEvents(cmd, trimmed)
-      : [makeEvent("utterance", { text: trimmed, ...(opts.speaker ? { speaker: opts.speaker } : {}) })];
+    let events: MediBotEvent[];
+    if (cmd) {
+      events = commandToEvents(cmd, trimmed);
+    } else {
+      const embedded = extractEmbedded(trimmed);
+      if (embedded) {
+        cmd = embedded.cmd;
+        console.log(`[voice] split fused segment: scene "…${embedded.head.slice(-40)}" + command`);
+        events = [
+          makeEvent("utterance", {
+            text: embedded.head,
+            ...(opts.speaker ? { speaker: opts.speaker } : {}),
+          }),
+          ...commandToEvents(embedded.cmd, embedded.tail),
+        ];
+      } else {
+        events = [
+          makeEvent("utterance", { text: trimmed, ...(opts.speaker ? { speaker: opts.speaker } : {}) }),
+        ];
+      }
+    }
 
     for (const e of events) {
       void sink.append(e).catch((err) => {

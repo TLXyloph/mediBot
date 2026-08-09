@@ -30,6 +30,16 @@ test("wake hangover consumed once; later plain speech is a normal utterance", ()
   assert.equal(events[0].payload.question, undefined);
 });
 
+test("fused segment emits scene utterance AND command events", () => {
+  const pipeline = createPipeline(stubSink());
+  const events = pipeline("He's still complaining of chest pain. Correction, BP 90 over 60.");
+  assert.equal(events.length, 2);
+  assert.equal(events[0].type, "utterance");
+  assert.equal(events[0].payload.text, "He's still complaining of chest pain.");
+  assert.equal(events[1].type, "correction");
+  assert.equal(events[1].payload.text, "BP 90 over 60");
+});
+
 test("VoiceOS pre-classified kind bypasses the grammar", () => {
   const pipeline = createPipeline(stubSink());
   const events = pipeline("BP 90 over 60", { kind: "correction" });

@@ -118,5 +118,11 @@ event `processed` for idempotency. B3/B4/B5 hang off the same pattern.
 
 - [x] B1 — schema, `append`, `timeline`, derived `epcr`/`patientState`/`sbar`
 - [x] scribe trigger wired (scheduler → internalAction → internal append + processed marker)
-- [x] **B2 — scribe extraction LIVE & verified**: scripted line → `symptom`+`medication`, `role: patient`, in 2.65s (R2 ✅ / R3 ✅). Gemini via `@google/genai` SDK (`scribe.ts` is `"use node"`), model `gemini-flash-lite-latest` (~0.6s). NB: the raw `:generateContent` REST endpoint was retired on this account — the SDK is the working path.
-- [ ] B3 — safety agent · B4 — protocol timers · B5 — gap + SBAR agents
+- [x] **B2 — scribe extraction LIVE & verified**: scripted line → `symptom`+`medication`, `role: patient`, in 2.65s (R2 ✅ / R3 ✅). Gemini via `@google/genai` SDK (`scribe.ts` is `"use node"`), model `gemini-flash-lite-latest` (~0.6s), **structured output (`responseSchema`)** so extraction can't be lost to malformed JSON. NB: the raw `:generateContent` REST endpoint was retired on this account — the SDK is the working path.
+- [x] **B3 — safety agent** (`safety.ts`): deterministic drug-conflict rules (anticoagulant↔antiplatelet/NSAID + allergy match), dedupe. R4 ✅ — end-to-end utterance→scribe→flag in 2.82s.
+- [x] **B4 — protocol timers** (`protocol.ts`): `start` + scheduler-driven `rhythmCheck`/`epi`, `DEMO_CLOCK` scaling, runaway cap. R6 ✅ — rhythm at 30.01s with `DEMO_CLOCK=4`.
+- [x] **B5 — gap + SBAR agents** (`gap.ts`, `sbar.ts`): gap asks missing `age` with quiet-moment defer (R5 ✅, 4.5s); SBAR deterministically assembled, emitted only on change. `sbar` query populated.
+
+Agent trigger routing is centralized in `events.ts` (`insertAndRoute`) using string function refs, so each agent lane plugs in without cross-file coupling.
+
+**Deployment env vars in use:** `LLM_PROVIDER=gemini`, `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-flash-lite-latest`, `DEMO_CLOCK=4`.

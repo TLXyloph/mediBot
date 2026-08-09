@@ -16,9 +16,15 @@ export function llmConfigured(): boolean {
 }
 
 // Returns raw model text. Callers ask for JSON and parse it themselves.
-export async function llm(prompt: string, system?: string): Promise<string> {
+// `responseSchema` (Gemini structured output) constrains the model to valid JSON
+// of that shape — eliminating the malformed-JSON class of failure.
+export async function llm(
+  prompt: string,
+  system?: string,
+  responseSchema?: any,
+): Promise<string> {
   const provider = process.env.LLM_PROVIDER ?? "gemini";
-  if (provider === "gemini") return geminiGenerate(prompt, system);
+  if (provider === "gemini") return geminiGenerate(prompt, system, responseSchema);
   if (provider === "openai") return openaiGenerate(prompt, system);
   throw new Error(`Unknown LLM_PROVIDER: ${provider}`);
 }
@@ -30,7 +36,11 @@ function genai(): GoogleGenAI {
   return (_genai ??= new GoogleGenAI({ apiKey: key }));
 }
 
-async function geminiGenerate(prompt: string, system?: string): Promise<string> {
+async function geminiGenerate(
+  prompt: string,
+  system?: string,
+  responseSchema?: any,
+): Promise<string> {
   // flash-lite-latest: ~0.6s, correct extraction, and a maintained alias so it
   // won't get deprecated mid-demo (which is exactly what killed gemini-2.5-flash).
   const model = process.env.GEMINI_MODEL ?? "gemini-flash-lite-latest";
@@ -40,6 +50,7 @@ async function geminiGenerate(prompt: string, system?: string): Promise<string> 
     config: {
       ...(system ? { systemInstruction: system } : {}),
       responseMimeType: "application/json",
+      ...(responseSchema ? { responseSchema } : {}),
       temperature: 0,
     },
   });

@@ -4,10 +4,18 @@
 import { useQuery } from "convex/react"
 import { anyApi } from "convex/react"
 import { Timeline } from "@/components/Timeline"
+import { EPCRPanel } from "@/components/EPCRPanel"
+import { deriveEPCR } from "@/lib/derive"
 import type { ConvexEvent } from "@/types/events"
+import { useState } from "react"
 
 export default function MedicPage() {
   const events = (useQuery(anyApi.events.timeline) ?? []) as ConvexEvent[]
+  const epcr = deriveEPCR(events)
+  const [provenanceId, setProvenanceId] = useState<string | null>(null)
+  const provenanceEvent = provenanceId
+    ? events.find((e) => e._id === provenanceId)
+    : null
 
   return (
     <main className="min-h-screen bg-neutral-950 text-white p-4 flex flex-col gap-6">
@@ -17,7 +25,27 @@ export default function MedicPage() {
       </header>
 
       <section>
-        <h2 className="text-xl font-semibold mb-2 text-neutral-300">Event Timeline</h2>
+        <h2 className="text-2xl font-semibold mb-3 text-neutral-300">ePCR</h2>
+        <EPCRPanel epcr={epcr} onFieldClick={setProvenanceId} />
+      </section>
+
+      {provenanceEvent && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+          onClick={() => setProvenanceId(null)}
+        >
+          <div className="bg-neutral-900 rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl">
+            <p className="text-xs text-neutral-500 mb-2">
+              {new Date(provenanceEvent.ts).toLocaleTimeString()} · {provenanceEvent.source} · {provenanceEvent.role}
+            </p>
+            <p className="text-lg">{String(provenanceEvent.payload.text ?? JSON.stringify(provenanceEvent.payload))}</p>
+            <p className="text-xs text-neutral-600 mt-3">Click anywhere to close</p>
+          </div>
+        </div>
+      )}
+
+      <section>
+        <h2 className="text-2xl font-semibold mb-3 text-neutral-300">Timeline</h2>
         <Timeline events={events} />
       </section>
     </main>

@@ -32,7 +32,15 @@ export async function POST(request: Request) {
   const result = await interpretHospitalSpeech(transcript)
   const url = requestUrl
   const priorAvailable = url.searchParams.get("available")
-  const available = result.available ?? (priorAvailable === "true" ? true : priorAvailable === "false" ? false : null)
+  const available = result.available ?? (
+    result.offloadMinutes !== null
+      ? true
+      : priorAvailable === "true"
+        ? true
+        : priorAvailable === "false"
+          ? false
+          : null
+  )
   const needsAvailability = available === null
   const needsOffload = available === true && result.offloadMinutes === null
   const needsFollowUp = needsAvailability || needsOffload

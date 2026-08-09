@@ -5,6 +5,7 @@ import { useQuery } from "convex/react"
 import { anyApi } from "convex/react"
 import { Timeline } from "@/components/Timeline"
 import { EPCRPanel } from "@/components/EPCRPanel"
+import { CompletenessBar } from "@/components/CompletenessBar"
 import { deriveEPCR } from "@/lib/derive"
 import type { ConvexEvent } from "@/types/events"
 import { useState } from "react"
@@ -25,8 +26,13 @@ export default function MedicPage() {
       </header>
 
       <section>
-        <h2 className="text-2xl font-semibold mb-3 text-neutral-300">ePCR</h2>
-        <EPCRPanel epcr={epcr} onFieldClick={setProvenanceId} />
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-2xl font-semibold text-neutral-300">ePCR</h2>
+        </div>
+        <CompletenessBar epcr={epcr} />
+        <div className="mt-3">
+          <EPCRPanel epcr={epcr} onFieldClick={setProvenanceId} />
+        </div>
       </section>
 
       {provenanceEvent && (

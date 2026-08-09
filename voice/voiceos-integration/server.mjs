@@ -26,7 +26,7 @@ const TOOLS = [
   {
     name: "medibot_mark",
     description:
-      "Call when the user asks MediBot to mark, log, or timestamp a clinical moment, e.g. 'mark epi given', 'mark time of arrest', 'mark ROSC'.",
+      "Call when the user asks Scribe (also answers to MediBot) to mark, log, or timestamp a clinical moment, e.g. 'mark epi given', 'mark time of arrest', 'mark ROSC'.",
     inputSchema: {
       type: "object",
       properties: { text: { type: "string", description: "What to mark, e.g. 'epi given'" } },
@@ -36,7 +36,7 @@ const TOOLS = [
   {
     name: "medibot_ask",
     description:
-      "Call when the user asks MediBot a question about the patient, medications, vitals, or incident timeline, e.g. 'when was the last epi?'.",
+      "Call when the user asks Scribe (also answers to MediBot) a question about the patient, medications, vitals, or incident timeline, e.g. 'when was the last epi?'.",
     inputSchema: {
       type: "object",
       properties: { question: { type: "string", description: "The question exactly as asked" } },

@@ -54,6 +54,31 @@ test("bare wake word returns wake sentinel for the pipeline hangover", () => {
   assert.deepEqual(parseCommand("MediBot."), { kind: "wake", text: "" });
 });
 
+// ---- primary wake name "Scribe" (common word, exact-token matched) ----
+
+test("'Scribe, mark epi given' → mark", () => {
+  assert.deepEqual(parseCommand("Scribe, mark epi given"), { kind: "mark", text: "epi given" });
+});
+
+test("'Scribe, when was the last epi?' → question", () => {
+  assert.deepEqual(parseCommand("Scribe, when was the last epi?"), {
+    kind: "question",
+    text: "when was the last epi?",
+  });
+});
+
+test("'Scribes mark ROSC.' (plural mishear) → mark", () => {
+  assert.deepEqual(parseCommand("Scribes mark ROSC."), { kind: "mark", text: "ROSC" });
+});
+
+test("'can you describe the pain' is NOT a wake", () => {
+  assert.equal(parseCommand("can you describe the pain"), null);
+});
+
+test("'the scribe noted it' mid-sentence is NOT a wake", () => {
+  assert.equal(parseCommand("the scribe noted it"), null);
+});
+
 // ---- real ASR output observed live on 2026-08-09 (OOV wake word mangling) ----
 
 test("ASR 'Merbau Mark Abby Given' → mark (say-voice variant)", () => {

@@ -22,6 +22,7 @@ An ambient AI crew member for paramedics. It listens to the whole scene and writ
 - **Deadline:** demo freeze 5:30 PM. Demo hard cap 60 seconds.
 - **Hardware:** 4 MacBooks, 1 Samsung phone, 3 iPhones, 1 mic wired to a speaker. Map: MB1 medic app + VoiceOS + mic/speaker · MB2 hospital screen · MB3 Gemini Live page, webcam facing the Samsung phone playing the simulated monitor loop · MB4 spare/dev · iPhones: patient script + backup-video camera.
 - **Two-plane voice architecture — RESOLVED (A1, ~1:00):** VoiceOS exposes **no continuous transcript stream** (push-to-talk/hands-free dictation; transcripts land in its SQLite only after a session ends). Data plane = the dedicated Gemini Live "ears" session — running on `gemini-3.1-flash-live-preview`, which is **AUDIO-modality-only** (TEXT rejected on our key); model output is discarded. VoiceOS remains the control plane via a local-MCP integration (`voice/voiceos-integration/`): its agent routes spoken commands to tools `medibot_correction` / `medibot_mark` / `medibot_ask` → `POST 127.0.0.1:4750/command` → events. The same commands also parse straight from the ambient transcript, so R12 holds even without the VoiceOS hop.
+- **Wake word is "Scribe" (renamed ~2:20 PM):** ASR only spells real dictionary words reliably — "MediBot" transcribed as Metabott/Merbau/Netbot in live testing. voice/ wakes on "Scribe" (exact match, env `WAKE_NAME`) and still catches MediBot manglings as a fallback. **eyes/ D1's system prompt and the pitch script must adopt "Scribe" too.**
 - **Protocol callouts are deterministic:** state-machine timers → TTS. Gemini/LLMs never own timing. Demo-mode clock runs timers at 4× (rhythm check q30s) so a callout lands inside 60s.
 - **Decoupling rule:** each lane owns exactly one directory (below) and nobody edits another lane's directory before Phase 2. `screens/` and `eyes/` call Convex by **string function names (`anyApi`)**, not generated types — zero shared files between lanes, zero merge conflicts. Rationale: we trade type safety for parallel speed today.
 - **Secrets:** keys live in per-directory `.env` files (gitignored) and in Convex env vars for agents (`npx convex env set GEMINI_API_KEY ...`). Never commit keys; never put keys in client code you screen-share.
@@ -96,7 +97,7 @@ ePCR, SBAR, and both dashboards are derived views over this log. Agents read the
 **Lane A — `voice/` (Voice I/O) — ✅ BUILT, merged to `main`**
 - A1 ✅ No VoiceOS transcript stream → Gemini Live ears session is the data plane (see Constraints).
 - A2 ✅ `cd voice && npm run dev`: mic (sox or ffmpeg) → ears session → `utterance` events. R1 verified live on the team key. Keyless dev: `npm run fake`; key sanity-check: `npm run check:gemini -- --tts`.
-- A3 ✅ Command grammar ("correction — …", "MediBot, mark …", "MediBot, <question>") parses from the ambient transcript AND ships as VoiceOS MCP tools (`voice/voiceos-integration/`) hitting `POST 127.0.0.1:4750/command`. All three kinds verified → correct event types. App-side install of the integration is the one open item (see Open questions).
+- A3 ✅ Command grammar ("correction — …", "Scribe, mark …", "Scribe, <question>") parses from the ambient transcript AND ships as VoiceOS MCP tools (`voice/voiceos-integration/`) hitting `POST 127.0.0.1:4750/command`. All three kinds verified → correct event types. App-side install of the integration is the one open item (see Open questions).
 - A4 ✅ `flag`/`timer` → spoken alert < 2s, verified via `npm run insert:flag` / `insert:timer`. Reactive Convex subscription with 500ms polling fallback; local JSONL mode when `CONVEX_URL` is unset. Remaining: put the shared `CONVEX_URL` into `voice/.env`.
 
 **Lane B — `brain/` (Convex + agents)**
@@ -132,7 +133,7 @@ ePCR, SBAR, and both dashboards are derived views over this log. Agents read the
 1. 0–15s — ambient scene; patient: "chest hurts… I take warfarin" → chart fills itself, role-attributed.
 2. 15–25s — gesture at camera rig: vitals have been logging themselves off the monitor the whole time.
 3. 25–35s — "giving aspirin" → safety agent interrupts aloud (warfarin + GI-bleed).
-4. 35–45s — "MediBot, when was the last epi?" → Gemini Live answers by voice.
+4. 35–45s — "Scribe, when was the last epi?" → Gemini Live answers by voice. (Wake word renamed from MediBot — ASR reliability; see Constraints.)
 5. 45–60s — reveal MB2: SBAR already waiting, vitals trending. Close.
 (Voice-correction beat lives in the backup video only.)
 

@@ -316,6 +316,7 @@ export interface HospitalSpeechResult {
   offloadMinutes: number | null
   capabilities: string[]
   reason: string | null
+  followUpQuestion: string | null
   confidence: number
   source: "gemini" | "fallback"
 }
@@ -332,6 +333,13 @@ function fallbackHospitalSpeech(transcript: string): HospitalSpeechResult {
     offloadMinutes: eta ? Number(eta[1]) : null,
     capabilities,
     reason: unavailable ? transcript.slice(0, 180) : null,
+    followUpQuestion: unavailable
+      ? null
+      : available && !eta
+        ? "What is your estimated offload time in minutes?"
+        : !available
+          ? "To confirm, are you available to receive this patient? Please answer yes or no."
+          : null,
     confidence: available || unavailable ? 0.72 : 0.25,
     source: "fallback",
   }
@@ -352,7 +360,7 @@ export async function interpretHospitalSpeech(transcript: string): Promise<Hospi
           contents: [{
             role: "user",
             parts: [{
-              text: `Extract the receiving hospital response. Availability must be true only for a clear acceptance, false for a clear refusal or capacity issue, and null when unclear. Transcript: ${JSON.stringify(transcript)}`,
+              text: `Extract the receiving hospital response. Availability must be true only for a clear acceptance, false for a clear refusal or capacity issue, and null when unclear. If availability is unclear, write a short yes-or-no follow-up question. If accepted but offload time is missing, ask for the estimated minutes. Otherwise followUpQuestion must be null. Transcript: ${JSON.stringify(transcript)}`,
             }],
           }],
           generationConfig: {
@@ -364,9 +372,10 @@ export async function interpretHospitalSpeech(transcript: string): Promise<Hospi
                 offloadMinutes: { type: "INTEGER", nullable: true },
                 capabilities: { type: "ARRAY", items: { type: "STRING" } },
                 reason: { type: "STRING", nullable: true },
+                followUpQuestion: { type: "STRING", nullable: true },
                 confidence: { type: "NUMBER" },
               },
-              required: ["available", "offloadMinutes", "capabilities", "reason", "confidence"],
+              required: ["available", "offloadMinutes", "capabilities", "reason", "followUpQuestion", "confidence"],
             },
           },
         }),
@@ -386,6 +395,9 @@ export async function interpretHospitalSpeech(transcript: string): Promise<Hospi
       offloadMinutes: Number.isFinite(Number(value.offloadMinutes)) ? Number(value.offloadMinutes) : null,
       capabilities: Array.isArray(value.capabilities) ? value.capabilities.map(String).slice(0, 8) : [],
       reason: typeof value.reason === "string" && value.reason ? value.reason.slice(0, 180) : null,
+      followUpQuestion: typeof value.followUpQuestion === "string" && value.followUpQuestion
+        ? value.followUpQuestion.slice(0, 220)
+        : fallback.followUpQuestion,
       confidence: Math.max(0, Math.min(1, Number(value.confidence ?? 0.8))),
       source: "gemini",
     }

@@ -40,7 +40,7 @@ Primary implementation files:
 - `screens/src/app/api/a1mobile/status/route.ts` — browser-safe readiness status (never returns credentials)
 - `screens/src/app/api/a1mobile/coordinate/route.ts` — starts hospital coordination
 - `screens/src/app/api/a1mobile/voice/route.ts` — signed A1 relay entry and TeXML prompt
-- `screens/src/app/api/a1mobile/voice/response/route.ts` — records returned speech transcript in Convex
+- `screens/src/app/api/a1mobile/voice/response/route.ts` — sends returned speech to Gemini, then records structured availability and the transcript in Convex
 - `screens/src/app/api/a1mobile/confirm/route.ts` — human destination confirmation and handoff
 
 ## A1mobile state at handoff
@@ -57,7 +57,7 @@ The UI rechecks the following conditions every 15 seconds:
 - `n/3 verified + allowlisted targets` — a configured hospital number appears in A1mobile's OTP verification list and in the server allowlist.
 - `Outbound enabled` — the explicit real-call flag is on and at least one callable target exists.
 
-At this handoff, webhook wiring is connected but A1mobile's read-only verification list returns zero numbers. Outbound calling is therefore safety-locked, and the real-call flag also remains off. Demo hospital agents remain fully interactive and no external number is dialed.
+At this handoff, one consenting test target has completed A1mobile OTP verification and is configured in the production UCSF slot and allowlist. The production real-call flag is enabled. `/coordinate` should therefore show one callable target and can place one outbound test call; all unconfigured hospitals remain undialed.
 
 ### Enabling an authorized live target
 
@@ -101,6 +101,7 @@ CONVEX_PATIENT_STATE_FUNCTION=patientState:patientState
 CONVEX_SBAR_FUNCTION=sbar:sbar
 GEMINI_API_KEY=
 GEMINI_VISION_MODEL=
+GEMINI_COORDINATION_MODEL=
 ```
 
 ## UI system
@@ -145,7 +146,7 @@ Manual checks:
 ## Known limits
 
 - Hospital acceptance/offload values are deterministic scenario state until a verified live target returns speech through the webhook.
-- The live voice response route records the transcript; richer transcript-to-structured-response parsing and per-hospital call correlation should be the next backend hardening task.
+- The live response transcript is interpreted by Gemini into `available`, `offloadMinutes`, `capabilities`, and `reason`, then appended to Convex. Per-call/per-hospital correlation should be the next backend hardening task.
 - This is a hackathon prototype, not a clinical dispatch system. Do not send PHI or contact real hospitals without authorization, consent, security review, and operating agreements.
 
 ## Teammate continuation checklist

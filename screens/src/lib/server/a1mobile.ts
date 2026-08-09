@@ -308,5 +308,88 @@ export function verifyA1Signature(rawBody: string, signature: string | null): bo
 
 export function voiceTexml(actionUrl: string): string {
   const escaped = actionUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;")
-  return `<?xml version="1.0" encoding="UTF-8"?><Response><Gather input="speech" action="${escaped}" method="POST" speechTimeout="auto" timeout="10"><Say>This is MedCrew EMS coordination. We have a high acuity patient requiring cardiac capable emergency care. Can you accept, and what is your estimated offload time?</Say></Gather><Say>No response was received. MedCrew will follow up.</Say></Response>`
+  return `<?xml version="1.0" encoding="UTF-8"?><Response><Gather input="speech" action="${escaped}" method="POST" speechTimeout="auto" timeout="12"><Say>This is MedCrew EMS coordination. We have a high acuity patient requiring cardiac capable emergency care. Are you available to receive this patient? Please answer yes or no, and include your estimated offload time.</Say></Gather><Say>No response was received. MedCrew will follow up.</Say></Response>`
+}
+
+export interface HospitalSpeechResult {
+  available: boolean | null
+  offloadMinutes: number | null
+  capabilities: string[]
+  reason: string | null
+  confidence: number
+  source: "gemini" | "fallback"
+}
+
+function fallbackHospitalSpeech(transcript: string): HospitalSpeechResult {
+  const unavailable = /\b(no|not available|unavailable|cannot accept|can't accept|at capacity|full)\b/i.test(transcript)
+  const available = !unavailable && /\b(yes|available|can accept|accepting|we can take)\b/i.test(transcript)
+  const eta = transcript.match(/(\d{1,3})\s*(?:minute|min)\b/i)
+  const capabilities = ["cardiac", "stroke", "trauma", "pediatric", "general"].filter((item) =>
+    new RegExp(`\\b${item}\\b`, "i").test(transcript),
+  )
+  return {
+    available: unavailable ? false : available ? true : null,
+    offloadMinutes: eta ? Number(eta[1]) : null,
+    capabilities,
+    reason: unavailable ? transcript.slice(0, 180) : null,
+    confidence: available || unavailable ? 0.72 : 0.25,
+    source: "fallback",
+  }
+}
+
+export async function interpretHospitalSpeech(transcript: string): Promise<HospitalSpeechResult> {
+  const fallback = fallbackHospitalSpeech(transcript)
+  const key = process.env.GEMINI_API_KEY
+  if (!key || !transcript.trim()) return fallback
+  const model = process.env.GEMINI_COORDINATION_MODEL ?? "gemini-3.1-flash-lite-preview"
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": key },
+        body: JSON.stringify({
+          contents: [{
+            role: "user",
+            parts: [{
+              text: `Extract the receiving hospital response. Availability must be true only for a clear acceptance, false for a clear refusal or capacity issue, and null when unclear. Transcript: ${JSON.stringify(transcript)}`,
+            }],
+          }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                available: { type: "BOOLEAN", nullable: true },
+                offloadMinutes: { type: "INTEGER", nullable: true },
+                capabilities: { type: "ARRAY", items: { type: "STRING" } },
+                reason: { type: "STRING", nullable: true },
+                confidence: { type: "NUMBER" },
+              },
+              required: ["available", "offloadMinutes", "capabilities", "reason", "confidence"],
+            },
+          },
+        }),
+        signal: AbortSignal.timeout(15_000),
+        cache: "no-store",
+      },
+    )
+    if (!response.ok) return fallback
+    const json = (await response.json()) as Record<string, unknown>
+    const candidates = json.candidates as Array<Record<string, unknown>> | undefined
+    const content = candidates?.[0]?.content as Record<string, unknown> | undefined
+    const parts = content?.parts as Array<Record<string, unknown>> | undefined
+    const text = parts?.find((part) => typeof part.text === "string")?.text
+    const value = JSON.parse(typeof text === "string" ? text : "{}") as Record<string, unknown>
+    return {
+      available: typeof value.available === "boolean" ? value.available : null,
+      offloadMinutes: Number.isFinite(Number(value.offloadMinutes)) ? Number(value.offloadMinutes) : null,
+      capabilities: Array.isArray(value.capabilities) ? value.capabilities.map(String).slice(0, 8) : [],
+      reason: typeof value.reason === "string" && value.reason ? value.reason.slice(0, 180) : null,
+      confidence: Math.max(0, Math.min(1, Number(value.confidence ?? 0.8))),
+      source: "gemini",
+    }
+  } catch {
+    return fallback
+  }
 }

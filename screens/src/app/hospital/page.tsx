@@ -11,7 +11,7 @@ import { FullscreenButton } from "@/components/FullscreenButton"
 import type { ConvexEvent } from "@/types/events"
 
 export default function HospitalPage() {
-  const events = (useQuery(anyApi.events.timeline) ?? []) as ConvexEvent[]
+  const events = (useQuery(anyApi.events.timeline, {}) ?? []) as ConvexEvent[]
   const epcr = deriveEPCR(events)
 
   return (

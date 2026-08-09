@@ -32,7 +32,7 @@ export function FlagFlash({ flags }: { flags: ConvexEvent[] }) {
           <div>
             <p className="text-sm font-bold uppercase text-red-400 tracking-widest mb-1">Safety Alert</p>
             <p className="text-xl text-white">
-              {String(latestFlag.payload.message ?? latestFlag.payload.text ?? "")}
+              {String(latestFlag.payload.message ?? latestFlag.payload.reason ?? latestFlag.payload.text ?? "")}
             </p>
             <p className="text-sm text-red-400 mt-1">
               {new Date(latestFlag.ts).toLocaleTimeString()}

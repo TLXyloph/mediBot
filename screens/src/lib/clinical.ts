@@ -88,3 +88,55 @@ export function answerPatientQuestion(question: string, events: ConvexEvent[]): 
   }
   return "I can answer questions about verified vitals, medications, allergies, protocol position, and the last epinephrine."
 }
+
+// Shape of the brain's patientState:patientState query (the fields we read).
+export interface PatientStateSummary {
+  medications?: Array<{ name?: string; role?: string | null }>
+  allergies?: string[]
+  lastEpi?: number | null
+  protocolPosition?: { name?: string; phase?: string } | null
+}
+
+// Answer a spoken question from the brain's canonical patient state (single source
+// of truth), falling back to the live event log for vitals and whenever the query
+// hasn't loaded yet. Keeps the medic app's spoken answers consistent with the
+// backend instead of a parallel client-only heuristic.
+export function answerFromPatientState(
+  question: string,
+  patient: PatientStateSummary | undefined,
+  events: ConvexEvent[],
+): string {
+  if (/last\s+(epi|epinephrine)|when.*(epi|epinephrine)/i.test(question)) {
+    const lastEpi = patient?.lastEpi ?? lastEpinephrine(events)
+    if (!lastEpi) return "No epinephrine administration is recorded in the verified patient timeline."
+    return `The last epinephrine was recorded at ${new Date(lastEpi).toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+    })}.`
+  }
+  if (/vital|blood pressure|heart rate|oxygen/i.test(question)) {
+    const vitals = latestVitals(events)
+    return `Latest verified vitals are heart rate ${vitals.hrBpm}, oxygen ${vitals.spo2Pct} percent, and blood pressure ${vitals.systolicMmHg} over ${vitals.diastolicMmHg}.`
+  }
+  if (/allerg/i.test(question)) {
+    const allergies = patient?.allergies ?? []
+    return allergies.length
+      ? `Documented allergies: ${allergies.join(", ")}.`
+      : "No allergies are recorded; treat as NKDA until confirmed."
+  }
+  if (/medication|meds\b|taking|drug|warfarin|aspirin/i.test(question)) {
+    const meds = (patient?.medications ?? [])
+      .map((med) => med?.name)
+      .filter((name): name is string => Boolean(name))
+    return meds.length
+      ? `Documented medications: ${meds.join(", ")}.`
+      : "No medications are recorded in the verified patient state yet."
+  }
+  if (/protocol|arrest|rhythm/i.test(question)) {
+    const position = patient?.protocolPosition
+    return position?.name
+      ? `Protocol: ${position.name}${position.phase ? ", " + position.phase : ""}.`
+      : "No active protocol is recorded."
+  }
+  return "I can answer questions about verified vitals, medications, allergies, protocol position, and the last epinephrine."
+}

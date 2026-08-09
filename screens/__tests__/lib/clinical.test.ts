@@ -1,4 +1,4 @@
-import { answerPatientQuestion, latestVitals } from "@/lib/clinical"
+import { answerFromPatientState, answerPatientQuestion, latestVitals } from "@/lib/clinical"
 import type { ConvexEvent } from "@/types/events"
 
 function event(ts: number, type: ConvexEvent["type"], payload: Record<string, unknown>): ConvexEvent {
@@ -19,5 +19,21 @@ describe("clinical state helpers", () => {
   it("answers last epi only from the verified event timeline", () => {
     const events = [event(new Date("2026-08-09T20:15:00Z").getTime(), "medication", { name: "epinephrine", dose: "1 mg" })]
     expect(answerPatientQuestion("MedCrew, when was the last epi?", events)).toMatch(/last epinephrine was recorded/i)
+  })
+
+  it("answerFromPatientState prefers the backend lastEpi over the event log", () => {
+    const backendTs = new Date("2026-08-09T20:15:00Z").getTime()
+    const answer = answerFromPatientState("MedCrew, when was the last epi?", { lastEpi: backendTs }, [])
+    expect(answer).toMatch(/last epinephrine was recorded/i)
+  })
+
+  it("answerFromPatientState reads medications from the canonical patient state", () => {
+    const answer = answerFromPatientState("what meds is the patient taking?", { medications: [{ name: "warfarin" }] }, [])
+    expect(answer).toMatch(/warfarin/i)
+  })
+
+  it("answerFromPatientState falls back to the event log when state has not loaded", () => {
+    const events = [event(new Date("2026-08-09T20:15:00Z").getTime(), "medication", { name: "epinephrine" })]
+    expect(answerFromPatientState("when was the last epi?", undefined, events)).toMatch(/last epinephrine was recorded/i)
   })
 })

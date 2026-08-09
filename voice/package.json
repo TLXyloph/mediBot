@@ -12,6 +12,7 @@
     "fake": "tsx src/index.ts --fake",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",
+    "tail": "tsx scripts/tail-timeline.ts",
     "insert:flag": "tsx scripts/insert-event.ts flag",
     "insert:timer": "tsx scripts/insert-event.ts timer",
     "check:gemini": "tsx scripts/check-gemini.ts"

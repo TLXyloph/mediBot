@@ -1,3 +1,5 @@
+"use node"; // @google/genai (via lib/llm) needs the Node runtime
+
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";

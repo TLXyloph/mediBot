@@ -10,6 +10,7 @@
     "seed": "convex run seed:demo"
   },
   "dependencies": {
+    "@google/genai": "^2.16.0",
     "convex": "^1.43.0"
   },
   "devDependencies": {

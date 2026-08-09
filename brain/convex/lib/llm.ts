@@ -1,8 +1,12 @@
 // ~The 5-line insurance wrapper from the plan: every agent calls models only
 // through llm(), so flipping providers is an env flag (LLM_PROVIDER), not code.
 //
-// Uses plain fetch (no SDK) so it runs in Convex's default runtime with no extra
-// deps. Secrets come from Convex deployment env vars (npx convex env set ...).
+// Gemini goes through the official @google/genai SDK (the raw :generateContent
+// REST endpoint was retired on this account — Aug 2026 — so callers of it 404).
+// Because of the SDK, files importing this module must be Convex "use node"
+// actions. Secrets come from Convex env vars (npx convex env set ...).
+
+import { GoogleGenAI } from "@google/genai";
 
 export function llmConfigured(): boolean {
   const provider = process.env.LLM_PROVIDER ?? "gemini";
@@ -19,25 +23,27 @@ export async function llm(prompt: string, system?: string): Promise<string> {
   throw new Error(`Unknown LLM_PROVIDER: ${provider}`);
 }
 
-async function geminiGenerate(prompt: string, system?: string): Promise<string> {
+let _genai: GoogleGenAI | null = null;
+function genai(): GoogleGenAI {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY not set");
-  const model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: system ? { parts: [{ text: system }] } : undefined,
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: "application/json", temperature: 0 },
-      }),
+  return (_genai ??= new GoogleGenAI({ apiKey: key }));
+}
+
+async function geminiGenerate(prompt: string, system?: string): Promise<string> {
+  // flash-lite-latest: ~0.6s, correct extraction, and a maintained alias so it
+  // won't get deprecated mid-demo (which is exactly what killed gemini-2.5-flash).
+  const model = process.env.GEMINI_MODEL ?? "gemini-flash-lite-latest";
+  const res = await genai().models.generateContent({
+    model,
+    contents: prompt,
+    config: {
+      ...(system ? { systemInstruction: system } : {}),
+      responseMimeType: "application/json",
+      temperature: 0,
     },
-  );
-  if (!res.ok) throw new Error(`Gemini ${res.status}: ${await res.text()}`);
-  const data: any = await res.json();
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  });
+  return res.text ?? "";
 }
 
 async function openaiGenerate(prompt: string, system?: string): Promise<string> {

@@ -118,5 +118,5 @@ event `processed` for idempotency. B3/B4/B5 hang off the same pattern.
 
 - [x] B1 — schema, `append`, `timeline`, derived `epcr`/`patientState`/`sbar`
 - [x] scribe trigger wired (scheduler → internalAction → internal append + processed marker)
-- [ ] B2 — scribe extraction goes live once `GEMINI_API_KEY` is set (no-ops safely until then)
+- [x] **B2 — scribe extraction LIVE & verified**: scripted line → `symptom`+`medication`, `role: patient`, in 2.65s (R2 ✅ / R3 ✅). Gemini via `@google/genai` SDK (`scribe.ts` is `"use node"`), model `gemini-flash-lite-latest` (~0.6s). NB: the raw `:generateContent` REST endpoint was retired on this account — the SDK is the working path.
 - [ ] B3 — safety agent · B4 — protocol timers · B5 — gap + SBAR agents

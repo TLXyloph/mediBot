@@ -3,6 +3,7 @@
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { Type } from "@google/genai";
 import { llm, llmConfigured } from "./lib/llm";
 
 // B2 — Scribe agent. Scheduled by events.append on every `utterance`.
@@ -60,8 +61,52 @@ role is one of: medic | patient | partner | bystander — inferred from content 
 payload shapes: medication {name}; symptom {text, allergy?}; vital {name, value}; intervention {name}.
 conf is 0..1. Emit {"events": []} if nothing clinical. Never invent facts not present in the utterance.`;
 
+// Structured-output schema: constrains Gemini to valid JSON of this exact shape,
+// so we never lose an extraction (e.g. the safety-critical "giving aspirin" beat)
+// to a malformed-JSON response.
+const SCRIBE_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    events: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          type: {
+            type: Type.STRING,
+            enum: ["symptom", "medication", "intervention", "vital"],
+          },
+          role: {
+            type: Type.STRING,
+            enum: ["medic", "patient", "partner", "bystander"],
+          },
+          payload: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING },
+              text: { type: Type.STRING },
+              value: { type: Type.STRING },
+              allergy: { type: Type.STRING },
+            },
+          },
+          conf: { type: Type.NUMBER },
+        },
+        required: ["type", "payload"],
+      },
+    },
+  },
+  required: ["events"],
+};
+
 async function extractFromUtterance(text: string): Promise<Array<any>> {
-  const raw = await llm(`Utterance: ${JSON.stringify(text)}`, SCRIBE_SYSTEM);
-  const parsed = JSON.parse(raw);
+  const raw = await llm(
+    `Utterance: ${JSON.stringify(text)}`,
+    SCRIBE_SYSTEM,
+    SCRIBE_SCHEMA,
+  );
+  // Belt-and-suspenders: strip any stray code fences before parsing. With the
+  // schema in place the output is already valid JSON; this just never throws.
+  const cleaned = raw.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  const parsed = JSON.parse(cleaned);
   return Array.isArray(parsed?.events) ? parsed.events : [];
 }

@@ -10,9 +10,12 @@
 
 import type * as epcr from "../epcr.js";
 import type * as events from "../events.js";
+import type * as gap from "../gap.js";
 import type * as lib_llm from "../lib/llm.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as patientState from "../patientState.js";
+import type * as protocol from "../protocol.js";
+import type * as safety from "../safety.js";
 import type * as sbar from "../sbar.js";
 import type * as scribe from "../scribe.js";
 import type * as seed from "../seed.js";
@@ -26,9 +29,12 @@ import type {
 declare const fullApi: ApiFromModules<{
   epcr: typeof epcr;
   events: typeof events;
+  gap: typeof gap;
   "lib/llm": typeof lib_llm;
   "lib/validators": typeof lib_validators;
   patientState: typeof patientState;
+  protocol: typeof protocol;
+  safety: typeof safety;
   sbar: typeof sbar;
   scribe: typeof scribe;
   seed: typeof seed;

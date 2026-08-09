@@ -1,12 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "com.medibot.voice",
+  "version": "0.1.0",
   "name": "MediBot",
+  "summary": "Log corrections, time-marks, and patient questions to the live MediBot chart by voice.",
+  "publisher": "MediBot team",
   "description": "Ambient AI crew member for paramedics. Logs corrections, time-marks, and questions to the live patient chart by voice.",
   "runtime": {
     "kind": "local-mcp",
-    "command": "node",
-    "args": ["server.mjs"]
+    "command": "/Users/samvrithbandi/.bun/bin/bun",
+    "args": ["/Users/samvrithbandi/Desktop/hackathons/voiceOS/mediBot/voice/voiceos-integration/server.mjs"]
   },
   "tools": [
     {

@@ -19,7 +19,7 @@ const text =
     : "Rhythm check due now.");
 
 const sink = makeSink();
-await sink.append(makeEvent(type, { text, say: text }, { source: "system", role: null }));
+await sink.append(makeEvent(type, { text, say: text }, { source: "system" }));
 console.log(`[insert] appended ${type} via ${sink.label}\n[insert] "${text}"`);
 sink.close();
 setTimeout(() => process.exit(0), 150);

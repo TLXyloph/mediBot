@@ -22,8 +22,12 @@ export interface MediBotEvent {
   ts: number;
   type: EventType;
   source: Source;
-  /** null = unattributed; lane B's scribe agent attributes roles from content. */
-  role: Role | null;
+  /**
+   * Omitted (not null!) when unattributed — brain/'s validator is
+   * v.optional(eventRole), which rejects an explicit null. Lane B's scribe
+   * agent attributes roles from content.
+   */
+  role?: Role;
   payload: Record<string, unknown>;
   conf: number;
   refs: string[];
@@ -32,13 +36,13 @@ export interface MediBotEvent {
 export function makeEvent(
   type: EventType,
   payload: Record<string, unknown>,
-  opts: { role?: Role | null; source?: Source; conf?: number; refs?: string[] } = {},
+  opts: { role?: Role; source?: Source; conf?: number; refs?: string[] } = {},
 ): MediBotEvent {
   return {
     ts: Date.now(),
     type,
     source: opts.source ?? "voice",
-    role: opts.role ?? null,
+    ...(opts.role ? { role: opts.role } : {}),
     payload,
     conf: opts.conf ?? 1,
     refs: opts.refs ?? [],

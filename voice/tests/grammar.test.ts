@@ -1,6 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseCommand, commandToEvents } from "../src/grammar.js";
+import { makeEvent } from "../src/contract.js";
+
+test("unattributed events omit role entirely (brain validator rejects null)", () => {
+  const e = makeEvent("utterance", { text: "chest hurts" });
+  assert.equal("role" in e, false);
+});
 
 test("correction with em-dash and trailing period", () => {
   const c = parseCommand("Correction — BP 90 over 60.");

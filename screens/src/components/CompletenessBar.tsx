@@ -2,16 +2,12 @@
 
 import { completeness, REQUIRED_FIELDS } from "@/lib/derive"
 import type { EPCRData } from "@/lib/derive"
+import { Check } from "lucide-react"
+
+import styles from "./CompletenessBar.module.css"
 
 export function CompletenessBar({ epcr }: { epcr: EPCRData }) {
   const pct = Math.round(completeness(epcr) * 100)
-  const color =
-    pct === 100
-      ? "bg-green-500"
-      : pct >= 60
-      ? "bg-yellow-500"
-      : "bg-red-500"
-
   const filledKeys = new Set(
     REQUIRED_FIELDS.filter(({ key }) => {
       const val = epcr[key]
@@ -22,32 +18,29 @@ export function CompletenessBar({ epcr }: { epcr: EPCRData }) {
   )
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-3">
+    <div className={styles.completeness}>
+      <div className={styles.progressLine}>
         <div
           role="progressbar"
           aria-valuenow={pct}
           aria-valuemin={0}
           aria-valuemax={100}
-          className="flex-1 h-3 bg-neutral-800 rounded-full overflow-hidden"
+          className={styles.track}
         >
           <div
-            className={`h-full rounded-full transition-all duration-500 ${color}`}
+            className={styles.fill}
             style={{ width: `${pct}%` }}
           />
         </div>
-        <span className="text-lg font-bold tabular-nums">{pct}%</span>
+        <strong>{pct}%</strong>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className={styles.fields}>
         {REQUIRED_FIELDS.map(({ key, label }) => (
           <span
             key={key}
-            className={`text-xs px-2 py-0.5 rounded-full ${
-              filledKeys.has(key)
-                ? "bg-green-900 text-green-300"
-                : "bg-neutral-800 text-neutral-500"
-            }`}
+            className={filledKeys.has(key) ? styles.complete : styles.pending}
           >
+            <Check size={13} />
             {label}
           </span>
         ))}

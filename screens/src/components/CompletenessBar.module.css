@@ -1,0 +1,9 @@
+.completeness { display:grid; gap:14px; }
+.progressLine { display:flex; align-items:center; gap:18px; }
+.track { height:8px; flex:1; overflow:hidden; border-radius:999px; background:rgba(36,29,24,.1); }
+.fill { height:100%; border-radius:inherit; background:var(--orange); transition:width .5s ease; }
+.progressLine strong { min-width:48px; font-size:1rem; font-variant-numeric:tabular-nums; }
+.fields { display:flex; flex-wrap:wrap; gap:9px 18px; }
+.fields span { display:inline-flex; align-items:center; gap:5px; color:var(--quiet); font-size:.72rem; font-weight:680; }
+.fields .complete { color:var(--green); }
+.pending svg { opacity:.28; }

@@ -2,6 +2,8 @@
 "use client"
 
 import { useState } from "react"
+import { Expand, Minimize2 } from "lucide-react"
+import styles from "./FullscreenButton.module.css"
 
 export function FullscreenButton() {
   const [isFs, setIsFs] = useState(false)
@@ -19,8 +21,10 @@ export function FullscreenButton() {
   return (
     <button
       onClick={toggle}
-      className="text-sm text-neutral-500 hover:text-white border border-neutral-700 rounded px-3 py-1 transition-colors"
+      className={styles.button}
+      type="button"
     >
+      {isFs ? <Minimize2 size={17} /> : <Expand size={17} />}
       {isFs ? "Exit Fullscreen" : "Fullscreen"}
     </button>
   )

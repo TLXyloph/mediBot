@@ -1,0 +1,9 @@
+.list { display:grid; gap:8px; }
+.event { display:grid; grid-template-columns:112px minmax(0,1fr) auto; gap:16px; align-items:center; min-height:52px; padding:7px 2px; }
+.badge { display:inline-flex; width:max-content; align-items:center; padding:5px 9px; border-radius:999px; font-size:.62rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+.medication { color:#825600; background:#f4dfae; }
+.intervention { color:var(--orange); background:var(--orange-soft); }
+.event strong { overflow:hidden; font-size:.94rem; font-weight:620; text-overflow:ellipsis; white-space:nowrap; }
+.event time { color:var(--quiet); font-size:.7rem; font-variant-numeric:tabular-nums; }
+.empty { margin:0; padding:26px 0; color:var(--quiet); text-align:center; }
+@media(max-width:560px){.event{grid-template-columns:1fr auto}.badge{grid-column:1}.event strong{grid-column:1;white-space:normal}.event time{grid-column:2;grid-row:1 / span 2}}

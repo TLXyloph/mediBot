@@ -7,6 +7,8 @@
 .actions { display:flex; align-items:center; gap:4px; }
 .actions a, .live { display:inline-flex; min-height:42px; align-items:center; gap:8px; padding:0 13px; border-radius:999px; color:var(--muted); text-decoration:none; font-size:.86rem; font-weight:680; white-space:nowrap; }
 .actions a:hover { color:var(--ink); background:rgba(255,249,241,.55); }
+.actions a.active { color:var(--ink); background:rgba(255,249,241,.78); }
+.actions a.active svg { color:var(--orange); }
 .live { margin-left:6px; color:var(--ink); background:var(--paper); }
 .live i { width:8px; height:8px; border-radius:50%; background:var(--green); }
 @media (max-width: 980px) { .actions a span { display:none; } .actions a { padding-inline:11px; } }

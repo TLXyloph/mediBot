@@ -1,9 +1,9 @@
 "use client"
 
-import Link from "next/link"
-import { useEffect, useState } from "react"
-import { Expand, HeartPulse, Wifi } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { Expand, HeartPulse, Minimize2, TimerReset, Wifi } from "lucide-react"
 
+import { MedCrewHeader } from "@/components/MedCrewHeader"
 import styles from "./monitor.module.css"
 
 const scenarios = [
@@ -15,27 +15,75 @@ const scenarios = [
 export default function MonitorPage() {
   const [index, setIndex] = useState(0)
   const [clock, setClock] = useState("")
+  const [fullscreen, setFullscreen] = useState(false)
+  const monitorRef = useRef<HTMLElement>(null)
+
   useEffect(() => {
     const updateClock = () => setClock(new Date().toLocaleTimeString([], { hour12: false }))
+    const onFullscreenChange = () => setFullscreen(document.fullscreenElement === monitorRef.current)
     updateClock()
+    document.addEventListener("fullscreenchange", onFullscreenChange)
     const clockTimer = setInterval(updateClock, 1000)
     const scenarioTimer = setInterval(() => setIndex((value) => (value + 1) % scenarios.length), 15_000)
-    return () => { clearInterval(clockTimer); clearInterval(scenarioTimer) }
+    return () => {
+      clearInterval(clockTimer)
+      clearInterval(scenarioTimer)
+      document.removeEventListener("fullscreenchange", onFullscreenChange)
+    }
   }, [])
+
+  const toggleFullscreen = async () => {
+    if (document.fullscreenElement) await document.exitFullscreen()
+    else await monitorRef.current?.requestFullscreen()
+  }
+
   const scenario = scenarios[index]
 
   return (
-    <main className={styles.shell} data-alert={scenario.label === "HYPOTENSION"}>
-      <header>
-        <Link href="/"><HeartPulse size={23} />MEDCREW <span>SIMULATED PATIENT MONITOR</span></Link>
-        <div><Wifi size={19} /><span>LIVE · DEMO ONLY</span><button type="button" onClick={() => document.documentElement.requestFullscreen()} aria-label="Enter full screen"><Expand size={19} /></button></div>
-      </header>
-      <section className={styles.grid} aria-live="polite">
-        <article className={styles.heart}><p>HR <small>bpm</small></p><strong>{scenario.hr}</strong></article>
-        <article className={styles.oxygen}><p>SpO₂ <small>%</small></p><strong>{scenario.spo2}</strong></article>
-        <article className={styles.pressure}><p>NIBP <small>mmHg</small></p><strong>{scenario.sbp}<i>/</i>{scenario.dbp}</strong></article>
+    <main className={styles.shell}>
+      <MedCrewHeader status="Monitor demo" />
+
+      <section className={styles.hero}>
+        <div>
+          <p className={styles.eyebrow}>Bedside display</p>
+          <h1>Critical values,<br /><em>impossible to miss.</em></h1>
+        </div>
+        <p>One glance for HR, oxygen, and pressure. The demo scenario advances every 15 seconds.</p>
       </section>
-      <footer><strong>{scenario.label}</strong><span>Scenario changes every 15 seconds</span><time>{clock}</time></footer>
+
+      <section ref={monitorRef} className={styles.monitor} data-alert={scenario.label === "HYPOTENSION"} aria-label="Simulated patient monitor">
+        <header className={styles.monitorHead}>
+          <span><HeartPulse size={20} />MedCrew monitor</span>
+          <div><Wifi size={17} /><span>MB3 · DEMO</span><time>{clock}</time></div>
+        </header>
+
+        <div className={styles.values} aria-live="polite">
+          <article className={styles.heart}>
+            <span>Heart rate</span>
+            <strong>{scenario.hr}</strong>
+            <small>bpm</small>
+          </article>
+          <article className={styles.oxygen}>
+            <span>Oxygen</span>
+            <strong>{scenario.spo2}</strong>
+            <small>percent</small>
+          </article>
+          <article className={styles.pressure}>
+            <span>Pressure</span>
+            <strong>{scenario.sbp}<i>/</i>{scenario.dbp}</strong>
+            <small>mmHg</small>
+          </article>
+        </div>
+
+        <footer className={styles.monitorFoot}>
+          <strong><i />{scenario.label}</strong>
+          <span><TimerReset size={16} />Next state in 15 seconds</span>
+          <button type="button" onClick={toggleFullscreen} aria-label={fullscreen ? "Exit full screen" : "Enter full screen"}>
+            {fullscreen ? <Minimize2 size={18} /> : <Expand size={18} />}
+            {fullscreen ? "Exit full screen" : "Full screen"}
+          </button>
+        </footer>
+      </section>
     </main>
   )
 }

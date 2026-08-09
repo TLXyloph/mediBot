@@ -2,18 +2,19 @@
 "use client"
 
 import type { ConvexEvent } from "@/types/events"
+import styles from "./Timeline.module.css"
 
 const TYPE_COLORS: Record<string, string> = {
-  utterance: "text-slate-400",
-  vital: "text-cyan-400",
-  medication: "text-yellow-400",
-  intervention: "text-orange-400",
-  symptom: "text-purple-400",
-  correction: "text-rose-400",
-  flag: "text-red-400",
-  protocol_state: "text-green-400",
-  timer: "text-green-400",
-  sbar_update: "text-blue-400",
+  utterance: styles.utterance,
+  vital: styles.vital,
+  medication: styles.medication,
+  intervention: styles.intervention,
+  symptom: styles.symptom,
+  correction: styles.correction,
+  flag: styles.flag,
+  protocol_state: styles.protocol,
+  timer: styles.timer,
+  sbar_update: styles.sbar,
 }
 
 function payloadSummary(e: ConvexEvent): string {
@@ -28,31 +29,29 @@ function payloadSummary(e: ConvexEvent): string {
 export function Timeline({ events }: { events: ConvexEvent[] }) {
   if (events.length === 0) {
     return (
-      <p className="text-slate-500 text-lg text-center py-8">
+      <p className={styles.empty}>
         Waiting for events…
       </p>
     )
   }
 
   return (
-    <div className="flex flex-col gap-2 overflow-y-auto max-h-[40vh] pr-1">
+    <div className={styles.timeline}>
       {[...events].reverse().map((e) => (
         <div
           key={e._id}
-          className="flex items-start gap-3 text-base font-mono bg-neutral-900 rounded px-3 py-2"
+          className={styles.event}
         >
-          <span className="text-neutral-500 shrink-0">
+          <time>
             {new Date(e.ts).toLocaleTimeString()}
-          </span>
+          </time>
           <span
-            className={`shrink-0 uppercase text-xs font-bold w-28 ${
-              TYPE_COLORS[e.type] ?? "text-white"
-            }`}
+            className={`${styles.type} ${TYPE_COLORS[e.type] ?? styles.utterance}`}
           >
             {e.type}
           </span>
-          <span className="text-neutral-300 truncate text-lg">{payloadSummary(e)}</span>
-          <span className="text-neutral-600 shrink-0 text-xs">{e.role}</span>
+          <span className={styles.summary}>{payloadSummary(e)}</span>
+          <span className={styles.role}>{e.role}</span>
         </div>
       ))}
     </div>

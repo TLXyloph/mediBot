@@ -1,0 +1,7 @@
+.flash { position:fixed; z-index:40; inset:0; pointer-events:none; background:rgba(226,57,23,.22); animation:flash 1.5s ease-out; }
+.alert { display:flex; align-items:flex-start; gap:14px; padding:18px 20px; border-radius:22px; color:#8d2e18; background:#ffe0d4; }
+.alert > svg { flex:none; margin-top:2px; color:var(--orange); }
+.label { margin:0 0 5px; color:var(--orange); font-size:.68rem; font-weight:820; letter-spacing:.1em; text-transform:uppercase; }
+.message { margin:0; color:var(--ink); font-size:1rem; font-weight:620; line-height:1.45; }
+.alert time { display:block; margin-top:5px; color:#a15847; font-size:.68rem; }
+@keyframes flash { 0%,100%{opacity:0} 25%,60%{opacity:1} }

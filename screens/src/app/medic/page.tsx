@@ -1,63 +1,78 @@
-// src/app/medic/page.tsx
 "use client"
 
+import { useState } from "react"
 import { useQuery } from "convex/react"
 import { anyApi } from "convex/server"
-import { Timeline } from "@/components/Timeline"
-import { EPCRPanel } from "@/components/EPCRPanel"
+import { Clock3, FileCheck2, ShieldCheck, X } from "lucide-react"
+
 import { CompletenessBar } from "@/components/CompletenessBar"
+import { EPCRPanel } from "@/components/EPCRPanel"
 import { FullscreenButton } from "@/components/FullscreenButton"
+import { MedCrewHeader } from "@/components/MedCrewHeader"
+import { Timeline } from "@/components/Timeline"
 import { deriveEPCR } from "@/lib/derive"
 import type { ConvexEvent } from "@/types/events"
-import { useState } from "react"
+import styles from "../clinical.module.css"
 
 export default function MedicPage() {
   const events = (useQuery(anyApi.events.timeline, {}) ?? []) as ConvexEvent[]
   const epcr = deriveEPCR(events)
   const [provenanceId, setProvenanceId] = useState<string | null>(null)
-  const provenanceEvent = provenanceId
-    ? events.find((e) => e._id === provenanceId)
-    : null
+  const provenanceEvent = provenanceId ? events.find((event) => event._id === provenanceId) : null
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-white p-4 flex flex-col gap-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-5xl font-bold tracking-tight">MedCrew</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-xl text-neutral-400">Medic View</span>
+    <main className={styles.shell}>
+      <MedCrewHeader status="Convex live" />
+
+      <section className={styles.hero}>
+        <div>
+          <p className={styles.eyebrow}>Verified patient record</p>
+          <h1>One patient,<br /><em>one verified story.</em></h1>
+          <p className={styles.lead}>Every field stays linked to the voice, vision, or medic event that created it.</p>
+        </div>
+        <div className={styles.heroAction}>
+          <ShieldCheck size={22} />
+          <span><small>Append-only record</small><strong>{events.length} verified events</strong></span>
           <FullscreenButton />
         </div>
-      </header>
+      </section>
 
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-2xl font-semibold text-neutral-300">ePCR</h2>
+      <section className={styles.section} aria-labelledby="record-heading">
+        <div className={styles.sectionHeading}>
+          <div>
+            <span><FileCheck2 size={18} />Current record</span>
+            <h2 id="record-heading">ePCR, built as care happens.</h2>
+          </div>
+          <p>Select a populated field to inspect its source event.</p>
         </div>
         <CompletenessBar epcr={epcr} />
-        <div className="mt-3">
+        <div className={styles.panelSpace}>
           <EPCRPanel epcr={epcr} onFieldClick={setProvenanceId} />
         </div>
       </section>
 
-      {provenanceEvent && (
-        <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
-          onClick={() => setProvenanceId(null)}
-        >
-          <div className="bg-neutral-900 rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl">
-            <p className="text-xs text-neutral-500 mb-2">
-              {new Date(provenanceEvent.ts).toLocaleTimeString()} · {provenanceEvent.source} · {provenanceEvent.role}
-            </p>
-            <p className="text-lg">{String(provenanceEvent.payload.text ?? JSON.stringify(provenanceEvent.payload))}</p>
-            <p className="text-xs text-neutral-600 mt-3">Click anywhere to close</p>
+      <section className={`${styles.section} ${styles.timelineSection}`} aria-labelledby="timeline-heading">
+        <div className={styles.sectionHeading}>
+          <div>
+            <span><Clock3 size={18} />Provenance timeline</span>
+            <h2 id="timeline-heading">What happened, in order.</h2>
           </div>
+          <p>Corrections preserve the original source instead of overwriting history.</p>
         </div>
-      )}
-
-      <section>
-        <h2 className="text-2xl font-semibold mb-3 text-neutral-300">Timeline</h2>
         <Timeline events={events} />
       </section>
+
+      {provenanceEvent && (
+        <div className={styles.modalBackdrop} onClick={() => setProvenanceId(null)} role="presentation">
+          <section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="source-heading" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className={styles.modalClose} onClick={() => setProvenanceId(null)} aria-label="Close source event"><X size={19} /></button>
+            <p className={styles.eyebrow}>Source event</p>
+            <h2 id="source-heading">Why this field is here.</h2>
+            <p className={styles.modalMeta}>{new Date(provenanceEvent.ts).toLocaleTimeString()} · {provenanceEvent.source} · {provenanceEvent.role}</p>
+            <p className={styles.modalPayload}>{String(provenanceEvent.payload.text ?? JSON.stringify(provenanceEvent.payload))}</p>
+          </section>
+        </div>
+      )}
     </main>
   )
 }

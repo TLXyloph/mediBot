@@ -2,6 +2,7 @@
 "use client"
 
 import type { EPCRData, VitalReading } from "@/lib/derive"
+import styles from "./EPCRPanel.module.css"
 
 function Field({
   label,
@@ -15,17 +16,17 @@ function Field({
   onClick?: (eventId: string) => void
 }) {
   return (
-    <div
+    <button
+      type="button"
       data-field={label}
       data-event-id={eventId ?? ""}
-      className={`bg-neutral-900 rounded p-3 flex flex-col gap-1 ${
-        eventId && onClick ? "cursor-pointer hover:bg-neutral-800 transition-colors" : ""
-      }`}
+      className={`${styles.field} ${eventId && onClick ? styles.clickable : ""}`}
       onClick={() => eventId && onClick?.(eventId)}
+      disabled={!eventId || !onClick}
     >
-      <span className="text-xs uppercase tracking-widest text-neutral-500">{label}</span>
-      <span className="text-2xl font-semibold truncate">{value || "—"}</span>
-    </div>
+      <span>{label}</span>
+      <strong>{value || "—"}</strong>
+    </button>
   )
 }
 
@@ -63,8 +64,8 @@ export function EPCRPanel({
     .join(", ")
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-      <div className="col-span-2 md:col-span-3">
+    <div className={styles.panel}>
+      <div className={styles.primary}>
         <Field
           label="Chief Complaint"
           value={epcr.chiefComplaint}
@@ -74,21 +75,25 @@ export function EPCRPanel({
           onClick={onFieldClick}
         />
       </div>
-      <Field
-        label="Age"
-        value={epcr.age}
-        eventId={
-          epcr.allEvents.find(
-            (e) => (e.type === "utterance" || e.type === "symptom") && e.payload.age != null
-          )?._id
-        }
-        onClick={onFieldClick}
-      />
-      <Field label="HR" value={hr.val ? `${hr.val} bpm` : ""} eventId={hr.id} onClick={onFieldClick} />
-      <Field label="SpO₂" value={spo2.val ? `${spo2.val}%` : ""} eventId={spo2.id} onClick={onFieldClick} />
-      <Field label="BP" value={bpVal ? `${bpVal} mmHg` : ""} eventId={sbp.id} onClick={onFieldClick} />
-      <Field label="Medications" value={medNames} eventId={epcr.medications[0]?._id} onClick={onFieldClick} />
-      <Field label="Interventions" value={intNames} eventId={epcr.interventions[0]?._id} onClick={onFieldClick} />
+      <div className={styles.vitals}>
+        <Field
+          label="Age"
+          value={epcr.age}
+          eventId={
+            epcr.allEvents.find(
+              (e) => (e.type === "utterance" || e.type === "symptom") && e.payload.age != null
+            )?._id
+          }
+          onClick={onFieldClick}
+        />
+        <Field label="Heart rate" value={hr.val ? `${hr.val} bpm` : ""} eventId={hr.id} onClick={onFieldClick} />
+        <Field label="Oxygen" value={spo2.val ? `${spo2.val}%` : ""} eventId={spo2.id} onClick={onFieldClick} />
+        <Field label="Pressure" value={bpVal ? `${bpVal} mmHg` : ""} eventId={sbp.id} onClick={onFieldClick} />
+      </div>
+      <div className={styles.care}>
+        <Field label="Medications" value={medNames} eventId={epcr.medications[0]?._id} onClick={onFieldClick} />
+        <Field label="Interventions" value={intNames} eventId={epcr.interventions[0]?._id} onClick={onFieldClick} />
+      </div>
     </div>
   )
 }

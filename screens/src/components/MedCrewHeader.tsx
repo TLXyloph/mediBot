@@ -1,10 +1,20 @@
+"use client"
+
 import Image from "next/image"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { ClipboardPlus, Hospital, MonitorUp } from "lucide-react"
 
 import styles from "./MedCrewHeader.module.css"
 
 export function MedCrewHeader({ status = "Convex live" }: { status?: string }) {
+  const pathname = usePathname()
+  const navItems = [
+    { href: "/medic", label: "Patient record", icon: ClipboardPlus },
+    { href: "/coordinate", label: "Coordinate", icon: Hospital },
+    { href: "/monitor", label: "Monitor", icon: MonitorUp },
+  ]
+
   return (
     <header className={styles.topbar}>
       <Link className={styles.brand} href="/" aria-label="MedCrew home">
@@ -15,9 +25,18 @@ export function MedCrewHeader({ status = "Convex live" }: { status?: string }) {
         </span>
       </Link>
       <nav className={styles.actions} aria-label="MedCrew views">
-        <Link href="/medic" aria-label="Patient record"><ClipboardPlus size={18} /><span>Patient record</span></Link>
-        <Link href="/coordinate" aria-label="Coordinate hospitals"><Hospital size={18} /><span>Coordinate</span></Link>
-        <Link href="/monitor" aria-label="Open monitor"><MonitorUp size={18} /><span>Monitor</span></Link>
+        {navItems.map(({ href, label, icon: Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            aria-label={label}
+            aria-current={pathname === href ? "page" : undefined}
+            className={pathname === href ? styles.active : undefined}
+          >
+            <Icon size={18} />
+            <span>{label}</span>
+          </Link>
+        ))}
         <span className={styles.live}><i />{status}</span>
       </nav>
     </header>

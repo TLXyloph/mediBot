@@ -1,0 +1,2 @@
+.button { display:inline-flex; min-height:42px; padding:0 15px; align-items:center; justify-content:center; gap:8px; border:0; border-radius:999px; color:var(--muted); background:rgba(255,249,241,.68); font-size:.78rem; font-weight:720; cursor:pointer; }
+.button:hover { color:var(--ink); background:var(--paper); }

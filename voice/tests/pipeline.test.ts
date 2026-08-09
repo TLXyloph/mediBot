@@ -40,6 +40,17 @@ test("fused segment emits scene utterance AND command events", () => {
   assert.equal(events[1].payload.text, "BP 90 over 60");
 });
 
+test("same command via ears then VoiceOS within 12s appends once", () => {
+  const pipeline = createPipeline(stubSink());
+  const first = pipeline("correction heart rate 118"); // ears grammar path
+  assert.equal(first.length, 1);
+  assert.equal(first[0].type, "correction");
+  const second = pipeline("heart rate 118", { kind: "correction" }); // VoiceOS MCP path
+  assert.deepEqual(second, []);
+  const different = pipeline("BP 90 over 60", { kind: "correction" });
+  assert.equal(different.length, 1);
+});
+
 test("VoiceOS pre-classified kind bypasses the grammar", () => {
   const pipeline = createPipeline(stubSink());
   const events = pipeline("BP 90 over 60", { kind: "correction" });

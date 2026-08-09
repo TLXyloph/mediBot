@@ -9,6 +9,13 @@ import { parseCommand, commandToEvents, extractEmbedded, type Command } from "./
 import type { EventSink } from "./sink.js";
 
 const WAKE_HANGOVER_MS = 4000;
+// One spoken command can arrive twice: ears' grammar AND VoiceOS's MCP tool
+// (both heard the same speech). Whichever lands second within this window is
+// dropped so the chart doesn't get duplicate corrections/marks.
+const CROSS_PATH_WINDOW_MS = 12_000;
+
+const fpNorm = (s: string): string =>
+  s.toLowerCase().replace(/[^a-z0-9 ]+/g, "").replace(/\s+/g, " ").trim();
 
 export interface UtteranceOpts {
   speaker?: string;
@@ -20,6 +27,7 @@ export type Pipeline = (text: string, opts?: UtteranceOpts) => MediBotEvent[];
 
 export function createPipeline(sink: EventSink): Pipeline {
   let pendingWakeUntil = 0;
+  const recentCommands = new Map<string, number>();
 
   return function handleUtterance(text: string, opts: UtteranceOpts = {}): MediBotEvent[] {
     const trimmed = text.replace(/\s+/g, " ").trim();
@@ -38,6 +46,21 @@ export function createPipeline(sink: EventSink): Pipeline {
       pendingWakeUntil = Date.now() + WAKE_HANGOVER_MS;
       console.log(`[voice] wake word heard — holding for next utterance ← "${trimmed.slice(0, 60)}"`);
       return [];
+    }
+
+    if (cmd) {
+      const fp = `${cmd.kind}|${fpNorm(cmd.text)}`;
+      const last = recentCommands.get(fp) ?? 0;
+      if (Date.now() - last < CROSS_PATH_WINDOW_MS) {
+        console.log(`[voice] command:${cmd.kind} duplicate across ears/VoiceOS — suppressed`);
+        return [];
+      }
+      recentCommands.set(fp, Date.now());
+      if (recentCommands.size > 50) {
+        for (const [k, t] of recentCommands) {
+          if (Date.now() - t > CROSS_PATH_WINDOW_MS) recentCommands.delete(k);
+        }
+      }
     }
 
     let events: MediBotEvent[];
@@ -66,9 +89,12 @@ export function createPipeline(sink: EventSink): Pipeline {
       void sink.append(e).catch((err) => {
         console.error(`[voice] append failed (${e.type}): ${String(err).slice(0, 200)}`);
       });
-      console.log(
-        `[voice] ${cmd ? `command:${cmd.kind}` : "utterance"} → ${e.type} ← "${trimmed.slice(0, 80)}"`,
-      );
+      const label = !cmd
+        ? "utterance"
+        : events.length > 1 && e.type === "utterance" && e.payload.question === undefined
+          ? "scene"
+          : `command:${cmd.kind}`;
+      console.log(`[voice] ${label} → ${e.type} ← "${trimmed.slice(0, 80)}"`);
     }
     return events;
   };

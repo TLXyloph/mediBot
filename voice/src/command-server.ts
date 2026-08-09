@@ -31,7 +31,13 @@ function json(res: http.ServerResponse, code: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
-export function startCommandServer(pipeline: Pipeline, sink: EventSink, speaker: Speaker): http.Server {
+export function startCommandServer(
+  pipeline: Pipeline,
+  sink: EventSink,
+  speaker: Speaker,
+  /** Called on each VoiceOS-routed command: its agent is about to speak aloud. */
+  onExternalCommand?: () => void,
+): http.Server {
   const server = http.createServer(async (req, res) => {
     try {
       if (req.method === "GET" && req.url === "/health") {
@@ -58,6 +64,7 @@ export function startCommandServer(pipeline: Pipeline, sink: EventSink, speaker:
         if (kind !== undefined && !KINDS.has(kind)) {
           return json(res, 400, { ok: false, error: "kind must be correction|mark|question" });
         }
+        if (kind !== undefined) onExternalCommand?.();
         const events = pipeline(text, {
           kind: kind as "correction" | "mark" | "question" | undefined,
         });

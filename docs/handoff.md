@@ -123,6 +123,12 @@ ePCR, SBAR, and both dashboards are derived views over this log. Agents read the
 ### Phase 2 — Integration (3:30 – 4:30, all four)
 - Run the 60s script end-to-end on the real hardware map. **Done when:** every beat produces its expected events and screen/audio outputs once.
 - Fix seams in priority order: R1→R3→R4→R9→R10→R11 (drop R5 first if time-boxed).
+- **Status ~3:00 PM — software integration DONE (audited all lanes, fixed seams):**
+  - Live-verified: append→scribe→typed events (<1s), safety flag→spoken alert, gap agent, protocol timers @4×, epcr/patientState/sbar/timeline queries, `protocol.stop` (call it between rehearsals!).
+  - Fixed in eyes/: `patientState:patientState` fn name (R11 threw), Scribe wake-gate (answers were being discarded — ASR can't spell "MediBot"), per-vital `{name,value}` events (R10 was invisible on screens/SBAR), medication-object normalizer.
+  - Fixed in brain/: strict runId tick guard (R6 timing), `payload.say` on safety flags (R4 beat now speaks the actual conflict). **⚠ Lane B must redeploy** (`npx convex dev`) to push these live.
+  - screens/ (read-only, human working): R9 reactive ✓; gap list handed over — R7 popover must follow `refs` to the source utterance; SBAR card → `sbar.sbar`; needs `NEXT_PUBLIC_CONVEX_URL` in `.env.local`.
+  - Still hardware-only: camera rig → R10 live check, ears+eyes two-session soak, MB2 hospital screen run, MB1 audio → room speaker.
 
 ### Phase 3 — Rehearse & freeze (4:30 – 5:30)
 - 4:30 record backup video during first full run (this is also the Best Video Demo entry). **Done when:** watchable 60s video exists by 5:15.

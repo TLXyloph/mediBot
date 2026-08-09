@@ -301,9 +301,27 @@ export async function confirmDestination(
 export function verifyA1Signature(rawBody: string, signature: string | null): boolean {
   const key = process.env.A1MOBILE_TEAM_KEY
   if (!key || !signature) return false
-  const expected = createHmac("sha256", key).update(rawBody).digest("hex")
-  if (expected.length !== signature.length) return false
-  return timingSafeEqual(Buffer.from(expected, "utf8"), Buffer.from(signature, "utf8"))
+  const digest = createHmac("sha256", key).update(rawBody).digest()
+  const expected = new Set([
+    digest.toString("hex").toLowerCase(),
+    digest.toString("base64"),
+    digest.toString("base64url"),
+  ])
+  const supplied = signature
+    .split(",")
+    .flatMap((part) => {
+      const trimmed = part.trim()
+      const value = trimmed.includes("=") ? trimmed.slice(trimmed.indexOf("=") + 1).trim() : trimmed
+      return [trimmed, value]
+    })
+    .filter(Boolean)
+  return supplied.some((candidate) => {
+    const normalized = /^[0-9a-f]+$/i.test(candidate) ? candidate.toLowerCase() : candidate
+    return [...expected].some((expectedValue) => {
+      if (expectedValue.length !== normalized.length) return false
+      return timingSafeEqual(Buffer.from(expectedValue, "utf8"), Buffer.from(normalized, "utf8"))
+    })
+  })
 }
 
 export function voiceTexml(actionUrl: string): string {

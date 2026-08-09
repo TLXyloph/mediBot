@@ -130,6 +130,17 @@ ePCR, SBAR, and both dashboards are derived views over this log. Agents read the
   - screens/ (read-only, human working): R9 reactive ✓; gap list handed over — R7 popover must follow `refs` to the source utterance; SBAR card → `sbar.sbar`; needs `NEXT_PUBLIC_CONVEX_URL` in `.env.local`.
   - Still hardware-only: camera rig → R10 live check, ears+eyes two-session soak, MB2 hospital screen run, MB1 audio → room speaker.
 
+**Lane D — camera bring-up, do this now (~3:55 PM; written for D's agent):**
+
+1. **Pull `main` first and restart any running eyes server** — eyes/ received Phase-2 fixes you must not re-litigate: `patientState:patientState` function name (R11 threw before), answer-playback wake gate accepts **"Scribe"** (+"MediBot" legacy; ASR cannot spell MediBot — do not revert), vitals emit **per-vital `{name: hr|spo2|sbp|dbp, value}` events sharing one ts** (contract shape; the old combined payload was invisible to screens/sbar), patientState normalizer accepts brain's medication objects, dotenv anchored to `eyes/.env`, `.env.example` corrected (its old `CONVEX_PATIENT_STATE_FUNCTION` value re-breaks R11 if copied).
+2. Setup: `cd eyes && cp .env.example .env`, fill `GEMINI_API_KEY` (team key) + `CONVEX_URL` (same value screens/ uses). Leave the commented overrides commented. `npm run dev`, then `curl localhost:3000/api/health` → expect `geminiConfigured:true, convexConfigured:true, convexMode:"live"`.
+3. Monitor: open `http://<MB3-ip>:3000/monitor` on the Samsung (values cycle every 15s). Prop the webcam on it, tape the positions.
+4. **R10 check:** live page running, camera on the monitor → within **5s** of an on-screen value change, four `vital` events (`source: vision`) land in Convex. Verify via the Convex dashboard data page, or from any checkout: `cd voice && npm install && printf 'CONVEX_URL=<url>\n' > .env && npm run tail -- 5` (the tail reader needs only the URL, no Gemini key).
+5. **R11 check:** say **"Scribe, when was the last epi?"** at MB3's mic → spoken answer starts < 2.5s. (Answer content is test-junk until the pre-rehearsal log reset — verify mechanics now, content later.) Unaddressed room talk must stay silent.
+6. Fallback: **Force fallback** button → vitals keep flowing via the 3s poll (R10 insurance).
+7. **Two-session soak (coordinate with lane A):** once your Live session is stable, say so in chat — MB1 runs the ears session alongside for 5 min; both sides watch for reconnect churn (the one-key concentration risk). Report churn or clean.
+8. Report in chat: R10 latency, R11 latency, any session drops. Your `DEMO_RUNBOOK.md` spoken cues were already renamed to "Scribe".
+
 ### Phase 3 — Rehearse & freeze (4:30 – 5:30)
 - 4:30 record backup video during first full run (this is also the Best Video Demo entry). **Done when:** watchable 60s video exists by 5:15.
 - Rehearse until two consecutive clean runs (R13). **Done when:** R13 passes.

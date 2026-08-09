@@ -26,6 +26,22 @@ const intervalMs = (baseSeconds: number) => (baseSeconds * 1000) / clock;
 // Cap reschedules so a cloud backend never runs a scheduler away forever.
 const MAX_N = 8;
 
+// The active run = the latest protocol_state IF it's still "started". Each timer
+// carries the runId it belongs to; a tick halts (no emit, no reschedule) if the
+// run was stopped or superseded by a newer start. This is how `stop` and a fresh
+// rehearsal cleanly kill a previous run's already-queued ticks — no dangling
+// timers polluting the next run.
+async function activeRunId(ctx: any): Promise<number | null> {
+  const states = await ctx.db
+    .query("events")
+    .withIndex("by_type", (q: any) => q.eq("type", "protocol_state"))
+    .collect();
+  states.sort((a: any, b: any) => a.ts - b.ts);
+  const latest = states[states.length - 1];
+  if (!latest || latest.payload?.phase !== "started") return null;
+  return latest.payload?.runId ?? null;
+}
+
 /**
  * start — begin a protocol run.
  * Emits the initial protocol_state and arms the first rhythm-check + epi timers.
@@ -36,23 +52,30 @@ export const start = mutation({
   handler: async (ctx: any, args) => {
     const rhythmIntervalMs = intervalMs(RHYTHM_BASE_SECONDS);
     const epiIntervalMs = intervalMs(EPI_BASE_SECONDS);
+    // Unique id for THIS run; every timer this run schedules carries it.
+    const runId = Date.now();
 
-    // Announce that the protocol has started.
+    // Announce that the protocol has started (supersedes any prior run).
     await insertAndRoute(ctx, {
       type: "protocol_state",
       source: "system",
       payload: {
         name: args.name ?? "arrest",
         phase: "started",
-        startedAt: Date.now(),
+        startedAt: runId,
+        runId,
       },
     });
 
     // Arm the first rhythm check and first epi dose (self-references by string name).
     await ctx.scheduler.runAfter(rhythmIntervalMs, mut("protocol:rhythmCheck"), {
       n: 1,
+      runId,
     });
-    await ctx.scheduler.runAfter(epiIntervalMs, mut("protocol:epi"), { n: 1 });
+    await ctx.scheduler.runAfter(epiIntervalMs, mut("protocol:epi"), {
+      n: 1,
+      runId,
+    });
 
     // Kick the gap agent (B5, different lane) so it can ask for missing fields
     // within 30s of protocol start. Scaled by the demo clock so it stays early.
@@ -65,8 +88,12 @@ export const start = mutation({
  * Emits a timer event and reschedules itself until the cap is reached.
  */
 export const rhythmCheck = internalMutation({
-  args: { n: v.optional(v.number()) },
+  args: { n: v.optional(v.number()), runId: v.optional(v.number()) },
   handler: async (ctx: any, args) => {
+    // Halt if this run was stopped or superseded by a newer start.
+    const active = await activeRunId(ctx);
+    if (active === null || (args.runId != null && active !== args.runId)) return;
+
     const n = args.n ?? 1;
     const rhythmIntervalMs = intervalMs(RHYTHM_BASE_SECONDS);
 
@@ -85,7 +112,7 @@ export const rhythmCheck = internalMutation({
       await ctx.scheduler.runAfter(
         rhythmIntervalMs,
         mut("protocol:rhythmCheck"),
-        { n: n + 1 },
+        { n: n + 1, runId: args.runId },
       );
     }
   },
@@ -96,8 +123,12 @@ export const rhythmCheck = internalMutation({
  * Emits a timer event and reschedules itself until the cap is reached.
  */
 export const epi = internalMutation({
-  args: { n: v.optional(v.number()) },
+  args: { n: v.optional(v.number()), runId: v.optional(v.number()) },
   handler: async (ctx: any, args) => {
+    // Halt if this run was stopped or superseded by a newer start.
+    const active = await activeRunId(ctx);
+    if (active === null || (args.runId != null && active !== args.runId)) return;
+
     const n = args.n ?? 1;
     const epiIntervalMs = intervalMs(EPI_BASE_SECONDS);
 
@@ -115,7 +146,25 @@ export const epi = internalMutation({
     if (n < MAX_N) {
       await ctx.scheduler.runAfter(epiIntervalMs, mut("protocol:epi"), {
         n: n + 1,
+        runId: args.runId,
       });
     }
+  },
+});
+
+/**
+ * stop — halt the active protocol run. Emits a "stopped" protocol_state, which
+ * makes every in-flight rhythmCheck/epi tick halt on its next fire (they check
+ * the active run first). Public so the voice lane can call anyApi.protocol.stop
+ * ("MediBot, stop the protocol"). Idempotent — safe to call when nothing is running.
+ */
+export const stop = mutation({
+  args: {},
+  handler: async (ctx: any) => {
+    await insertAndRoute(ctx, {
+      type: "protocol_state",
+      source: "system",
+      payload: { name: "arrest", phase: "stopped", stoppedAt: Date.now() },
+    });
   },
 });

@@ -91,6 +91,8 @@ shapes are the frozen contract — don't rename without telling C and D.
 | `epcr.epcr` | query | `{}` | `{ symptoms, medications, interventions, flags, corrections, vitals }`, each field carries provenance |
 | `patientState.patientState` | query | `{}` | `{ medications, allergies, lastEpi, protocolPosition }` |
 | `sbar.sbar` | query | `{}` | latest SBAR card (`_derived: true` until the SBAR agent runs) |
+| `protocol.start` | mutation | `{ name? }` | begins a protocol run (arms rhythm/epi timers) |
+| `protocol.stop` | mutation | `{}` | halts the active run — call to reset between rehearsals |
 
 `type` ∈ utterance · vital · intervention · medication · symptom · correction · flag · protocol_state · timer · sbar_update
 `source` ∈ voice · vision · agent · system

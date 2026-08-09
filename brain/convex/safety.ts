@@ -53,6 +53,9 @@ export const run = internalMutation({
     const ev: any = await ctx.db.get(args.eventId);
     if (!ev) return;
     if (ev.type !== "medication" && ev.type !== "intervention") return;
+    // Idempotency: never safety-check the same event twice (uses the schema's
+    // `processed` marker, which this agent previously ignored).
+    if (ev.processed) return;
 
     // 2. Derive the triggering drug/intervention name and the documented state.
     const given: string = (ev.payload?.name ?? ev.payload?.text ?? "")
@@ -85,20 +88,31 @@ export const run = internalMutation({
       }
     }
 
-    // Pre-scan existing safety flags so we never emit a duplicate.
-    const existingFlags = all.filter(
-      (e: any) => e.type === "flag" && e.payload?.kind === "safety",
+    // Dedupe by the UNORDERED drug pair, so aspirin↔warfarin is ONE conflict —
+    // no matter how many warfarin events are on record, or which drug triggered
+    // the check. (The old code emitted one flag per matching med event → 4×.)
+    const pairKey = (a: string, b: string) => [a, b].sort().join(" | ");
+    const existingPairKeys = new Set<string>(
+      all
+        .filter((e: any) => e.type === "flag" && e.payload?.kind === "safety")
+        .map((f: any) => pairKey(f.payload?.given, f.payload?.conflictsWith)),
     );
-    const alreadyFlagged = (conflictsWith: string): boolean =>
-      existingFlags.some(
-        (f: any) =>
-          f.payload?.given === given &&
-          f.payload?.conflictsWith === conflictsWith,
-      );
 
-    // Collect conflicts as { conflictsWith, reason, refId } then emit + dedupe.
-    const conflicts: { conflictsWith: string; reason: string; refId: any }[] =
-      [];
+    // Collect conflicts, collapsing duplicates against existing flags AND within
+    // this run.
+    const emitted = new Set<string>();
+    const conflicts: {
+      conflictsWith: string;
+      reason: string;
+      refId: any;
+      key: string;
+    }[] = [];
+    const consider = (conflictsWith: string, reason: string, refId: any) => {
+      const key = pairKey(given, conflictsWith);
+      if (existingPairKeys.has(key) || emitted.has(key)) return;
+      emitted.add(key);
+      conflicts.push({ conflictsWith, reason, refId, key });
+    };
 
     // 3a. BLEEDING RISK — triggering drug in one group, another documented med
     // in the opposing group.
@@ -107,33 +121,30 @@ export const run = internalMutation({
     if (givenIsAnticoag || givenIsAntiplatelet) {
       const opposing = givenIsAnticoag ? ANTIPLATELET_NSAID : ANTICOAG;
       for (const med of documentedMeds) {
-        // Skip the triggering event itself.
-        if (med.id === args.eventId) continue;
+        if (med.id === args.eventId) continue; // skip the triggering event itself
         if (inGroup(med.name, opposing)) {
-          conflicts.push({
-            conflictsWith: med.name,
-            reason: `Warning: ${given} with documented ${med.name} — bleeding risk.`,
-            refId: med.id,
-          });
+          consider(
+            med.name,
+            `Warning: ${given} with documented ${med.name} — bleeding risk.`,
+            med.id,
+          );
         }
       }
     }
 
-    // 3b. ALLERGY — triggering drug matches a documented allergy (substring,
-    // either direction).
+    // 3b. ALLERGY — triggering drug matches a documented allergy (either direction).
     for (const a of documentedAllergies) {
       if (given.includes(a.allergen) || a.allergen.includes(given)) {
-        conflicts.push({
-          conflictsWith: a.allergen,
-          reason: `Warning: ${given} — documented allergy (${a.allergen}).`,
-          refId: a.id,
-        });
+        consider(
+          a.allergen,
+          `Warning: ${given} — documented allergy (${a.allergen}).`,
+          a.id,
+        );
       }
     }
 
-    // 4. Emit one flag per conflict, deduped and routed through the shared path.
+    // 4. Emit exactly one flag per unique conflict pair.
     for (const c of conflicts) {
-      if (alreadyFlagged(c.conflictsWith)) continue;
       await insertAndRoute(ctx, {
         type: "flag",
         source: "agent",
@@ -143,10 +154,13 @@ export const run = internalMutation({
           reason: c.reason,
           given,
           conflictsWith: c.conflictsWith,
+          pairKey: c.key,
         },
         refs: [args.eventId, c.refId],
       });
     }
-    // 5. No conflicts → nothing emitted.
+
+    // 5. Mark the trigger processed so any re-schedule is a no-op (idempotency).
+    await ctx.db.patch(args.eventId, { processed: true });
   },
 });

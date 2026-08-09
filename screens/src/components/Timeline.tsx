@@ -39,7 +39,7 @@ export function Timeline({ events }: { events: ConvexEvent[] }) {
       {[...events].reverse().map((e) => (
         <div
           key={e._id}
-          className="flex items-start gap-3 text-sm font-mono bg-neutral-900 rounded px-3 py-2"
+          className="flex items-start gap-3 text-base font-mono bg-neutral-900 rounded px-3 py-2"
         >
           <span className="text-neutral-500 shrink-0">
             {new Date(e.ts).toLocaleTimeString()}
@@ -51,7 +51,7 @@ export function Timeline({ events }: { events: ConvexEvent[] }) {
           >
             {e.type}
           </span>
-          <span className="text-neutral-300 truncate">{payloadSummary(e)}</span>
+          <span className="text-neutral-300 truncate text-lg">{payloadSummary(e)}</span>
           <span className="text-neutral-600 shrink-0 text-xs">{e.role}</span>
         </div>
       ))}

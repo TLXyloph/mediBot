@@ -24,3 +24,14 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Projector baseline: bump default body size for MB2 full-screen */
+html {
+  font-size: 18px;
+}
+
+/* Flash animation used by FlagFlash */
+@keyframes flash-red {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.5; }
+}

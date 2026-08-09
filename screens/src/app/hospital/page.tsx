@@ -7,6 +7,7 @@ import { VitalsTrendChart } from "@/components/VitalsTrendChart"
 import { InterventionsList } from "@/components/InterventionsList"
 import { SBARCard } from "@/components/SBARCard"
 import { FlagFlash } from "@/components/FlagFlash"
+import { FullscreenButton } from "@/components/FullscreenButton"
 import type { ConvexEvent } from "@/types/events"
 
 export default function HospitalPage() {
@@ -19,7 +20,10 @@ export default function HospitalPage() {
 
       <header className="flex items-center justify-between">
         <h1 className="text-5xl font-bold tracking-tight">MediBot</h1>
-        <span className="text-2xl text-neutral-400">Hospital View</span>
+        <div className="flex items-center gap-4">
+          <span className="text-2xl text-neutral-400">Hospital View</span>
+          <FullscreenButton />
+        </div>
       </header>
 
       <SBARCard epcr={epcr} />

@@ -45,16 +45,28 @@ export function deriveEPCR(events: ConvexEvent[]): EPCRData {
   )
   const age = ageEvent ? String(ageEvent.payload.age) : ""
 
-  const vitals: VitalReading[] = eff
-    .filter((e) => e.type === "vital")
-    .map((e) => ({
-      ts: e.ts,
-      hr: e.payload.hr as number | undefined,
-      spo2: e.payload.spo2 as number | undefined,
-      sbp: e.payload.sbp as number | undefined,
-      dbp: e.payload.dbp as number | undefined,
-      sourceEvent: e,
-    }))
+  // Accumulate vitals: handle both named-field format {hr,spo2,sbp,dbp} (Lane D)
+  // and {name,value} format (Lane B scribe). Multiple {name,value} events are
+  // merged into a single reading per timestamp group.
+  const vitalMap = new Map<number, VitalReading>()
+  eff.filter((e) => e.type === "vital").forEach((e) => {
+    const p = e.payload
+    const existing = vitalMap.get(e.ts) ?? { ts: e.ts, sourceEvent: e }
+    if (p.name != null && p.value != null) {
+      const name = String(p.name).toLowerCase()
+      if (name === "hr" || name === "heart rate") (existing as any).hr = Number(p.value)
+      else if (name === "spo2" || name === "spo₂" || name === "oxygen") (existing as any).spo2 = Number(p.value)
+      else if (name === "sbp" || name === "systolic") (existing as any).sbp = Number(p.value)
+      else if (name === "dbp" || name === "diastolic") (existing as any).dbp = Number(p.value)
+    } else {
+      if (p.hr != null) (existing as any).hr = p.hr as number
+      if (p.spo2 != null) (existing as any).spo2 = p.spo2 as number
+      if (p.sbp != null) (existing as any).sbp = p.sbp as number
+      if (p.dbp != null) (existing as any).dbp = p.dbp as number
+    }
+    vitalMap.set(e.ts, existing as VitalReading)
+  })
+  const vitals: VitalReading[] = Array.from(vitalMap.values()).sort((a, b) => a.ts - b.ts)
 
   return {
     chiefComplaint,

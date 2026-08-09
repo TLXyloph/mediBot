@@ -19,7 +19,7 @@ export default function HospitalPage() {
       <FlagFlash flags={epcr.flags} />
 
       <header className="flex items-center justify-between">
-        <h1 className="text-5xl font-bold tracking-tight">MediBot</h1>
+        <h1 className="text-5xl font-bold tracking-tight">MedCrew</h1>
         <div className="flex items-center gap-4">
           <span className="text-2xl text-neutral-400">Hospital View</span>
           <FullscreenButton />

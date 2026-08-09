@@ -22,7 +22,7 @@ export default function MedicPage() {
   return (
     <main className="min-h-screen bg-neutral-950 text-white p-4 flex flex-col gap-6">
       <header className="flex items-center justify-between">
-        <h1 className="text-5xl font-bold tracking-tight">MediBot</h1>
+        <h1 className="text-5xl font-bold tracking-tight">MedCrew</h1>
         <div className="flex items-center gap-4">
           <span className="text-xl text-neutral-400">Medic View</span>
           <FullscreenButton />

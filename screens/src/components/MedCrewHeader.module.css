@@ -1,0 +1,14 @@
+.topbar { display:flex; align-items:center; justify-content:space-between; gap:28px; }
+.brand { display:flex; align-items:center; gap:14px; color:inherit; text-decoration:none; }
+.brand img { width:52px; height:52px; object-fit:contain; }
+.brand > span { display:block; }
+.brand strong { display:block; font-size:1.2rem; line-height:1.1; letter-spacing:-.025em; }
+.brand small { display:block; margin-top:5px; color:var(--muted); font-size:.82rem; }
+.actions { display:flex; align-items:center; gap:4px; }
+.actions a, .live { display:inline-flex; min-height:42px; align-items:center; gap:8px; padding:0 13px; border-radius:999px; color:var(--muted); text-decoration:none; font-size:.86rem; font-weight:680; white-space:nowrap; }
+.actions a:hover { color:var(--ink); background:rgba(255,249,241,.55); }
+.live { margin-left:6px; color:var(--ink); background:var(--paper); }
+.live i { width:8px; height:8px; border-radius:50%; background:var(--green); }
+@media (max-width: 980px) { .actions a span { display:none; } .actions a { padding-inline:11px; } }
+@media (max-width: 620px) { .topbar { align-items:flex-start; } .actions { gap:0; } .actions a:nth-child(1) { display:none; } .live { position:absolute; top:80px; right:20px; min-height:34px; padding-inline:12px; font-size:.75rem; } .brand small { font-size:.76rem; } }
+/* Compact navigation keeps icon labels accessible on mobile. */

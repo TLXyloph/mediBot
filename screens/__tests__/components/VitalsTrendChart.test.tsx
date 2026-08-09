@@ -1,7 +1,6 @@
 import { render, screen } from "@testing-library/react"
 import { VitalsTrendChart } from "@/components/VitalsTrendChart"
 import type { VitalReading } from "@/lib/derive"
-import type { ConvexEvent } from "@/types/events"
 
 const makeVital = (ts: number, hr: number, spo2: number): VitalReading => ({
   ts,

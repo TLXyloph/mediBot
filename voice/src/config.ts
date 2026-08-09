@@ -46,7 +46,9 @@ export const cfg = {
     "gemini-2.5-flash-native-audio-preview-09-2025",
   ]),
   ttsEngine: (env.TTS_ENGINE === "say" ? "say" : "gemini") as "gemini" | "say",
-  ttsModels: uniq([env.TTS_MODEL ?? "", "gemini-2.5-flash-preview-tts"]),
+  // Probed on the team key 2026-08-09: flash-2.5 ~1.9s, 3.1-tts-preview ~3s,
+  // pro ~4s — all too slow to gate an alert on, hence cache+warm in tts.ts.
+  ttsModels: uniq([env.TTS_MODEL ?? "", "gemini-2.5-flash-preview-tts", "gemini-3.1-flash-tts-preview"]),
   ttsVoice: env.TTS_VOICE ?? "Kore",
   sayVoice: env.SAY_VOICE ?? "",
   ttsTimeoutMs: num(env.TTS_TIMEOUT_MS, 2000),

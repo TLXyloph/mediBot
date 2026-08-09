@@ -33,7 +33,8 @@ const unwatch = sink.watchAlerts((e) => {
   console.log(`[voice] ALERT ${e.type}: speaking "${text}"`);
   speaker.say(text);
 });
-console.log(`[voice] alerts: flag+timer → TTS (${cfg.ttsEngine === "say" ? "macOS say" : "Gemini TTS, say fallback"})`);
+console.log(`[voice] alerts: flag+timer → TTS (${cfg.ttsEngine === "say" ? "macOS say" : "instant say, Gemini voice cached for repeats"})`);
+speaker.prewarm(["Protocol timer due.", "Safety flag raised."]);
 
 const server = startCommandServer(sink, speaker);
 

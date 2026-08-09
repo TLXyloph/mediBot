@@ -45,6 +45,7 @@ export class Speaker {
   private ai: GoogleGenAI | null = null;
   private ttsModel: string | null = null;
   private cache = new Map<string, string>(); // text -> wav path
+  private warming = new Set<string>();
   private geminiBroken = false;
 
   constructor() {
@@ -93,23 +94,39 @@ export class Speaker {
     }
   }
 
+  /** Warm the premium-voice cache for known callouts (fire-and-forget). */
+  prewarm(texts: string[]): void {
+    for (const t of texts) this.warm(t.replace(/\s+/g, " ").trim());
+  }
+
+  // Alert latency is the contract (R4/R6): never gate speech on a cloud call.
+  // Cached premium wav plays instantly; otherwise `say` speaks NOW and the
+  // Gemini wav warms in the background so repeats (timers) get the good voice.
   private async speakOne(text: string): Promise<void> {
-    if (this.ai && !this.geminiBroken) {
+    const cached = this.cache.get(text);
+    if (cached) {
       try {
-        const wavPath = await this.geminiWav(text);
-        await run("afplay", [wavPath]);
+        await run("afplay", [cached]);
         return;
-      } catch (err) {
-        console.error(`[voice] gemini tts failed (${String(err).slice(0, 160)}) — using say`);
+      } catch {
+        this.cache.delete(text); // tmp file gone — fall through to say + rewarm
       }
     }
+    this.warm(text);
     await this.macSay(text);
   }
 
-  private async geminiWav(text: string): Promise<string> {
-    const cached = this.cache.get(text);
-    if (cached) return cached;
+  private warm(text: string): void {
+    if (!this.ai || this.geminiBroken || !text || this.cache.has(text) || this.warming.has(text)) return;
+    this.warming.add(text);
+    void this.geminiWav(text)
+      .catch((err) => {
+        console.error(`[voice] tts warm failed for "${text.slice(0, 40)}…": ${String(err).slice(0, 120)}`);
+      })
+      .finally(() => this.warming.delete(text));
+  }
 
+  private async geminiWav(text: string): Promise<string> {
     const gen = async (): Promise<string> => {
       let lastErr: unknown = new Error("no tts model");
       for (const model of this.ttsModel ? [this.ttsModel] : cfg.ttsModels) {
@@ -141,14 +158,17 @@ export class Speaker {
           lastErr = err;
         }
       }
-      this.geminiBroken = true; // stop paying the timeout on every alert
+      this.geminiBroken = true; // every model failed — stop warming this session
       throw lastErr;
     };
 
+    // Generous cap: this only runs in the background warmer, never in the
+    // speech path (cfg.ttsTimeoutMs floor keeps env override meaningful).
+    const capMs = Math.max(cfg.ttsTimeoutMs, 10_000);
     return await Promise.race([
       gen(),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`timeout ${cfg.ttsTimeoutMs}ms`)), cfg.ttsTimeoutMs),
+        setTimeout(() => reject(new Error(`timeout ${capMs}ms`)), capMs).unref?.(),
       ),
     ]);
   }

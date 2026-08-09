@@ -70,8 +70,27 @@ test("bare PTT trigger phrase is not evented", () => {
   const pipeline = createPipeline(stubSink());
   assert.deepEqual(pipeline("Hey VoiceOS."), []);
   assert.deepEqual(pipeline("voice os"), []);
+  assert.deepEqual(pipeline("Hey, voice us."), []); // ASR manglings observed live
+  assert.deepEqual(pipeline("Hey, boys OS"), []);
   const normal = pipeline("the voice on the radio said to hold");
-  assert.equal(normal.length, 1); // only the exact trigger is suppressed
+  assert.equal(normal.length, 1); // only the trigger family is suppressed
+});
+
+test("mangled hey-anchored trigger fires the PTT chord", () => {
+  let holds = 0;
+  const ptt = new VoiceOSPtt(6000, () => {}, (_ms, done) => {
+    holds++;
+    done();
+  });
+  ptt.observeChunk("Hey, voice us.");
+  assert.equal(holds, 1);
+  const ptt2 = new VoiceOSPtt(6000, () => {}, (_ms, done) => {
+    holds += 10;
+    done();
+  });
+  ptt2.observeChunk("the boys os variant without a hey anchor");
+  ptt2.observeChunk("chest hurts and he takes warfarin");
+  assert.equal(holds, 1); // ambient speech never fires
 });
 
 test("VoiceOS pre-classified kind bypasses the grammar", () => {

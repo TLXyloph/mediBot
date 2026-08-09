@@ -33,9 +33,9 @@ export function createPipeline(sink: EventSink): Pipeline {
     const trimmed = text.replace(/\s+/g, " ").trim();
     if (!trimmed) return [];
 
-    // The PTT trigger phrase alone is plumbing, not chart material.
-    // ("Hey, Voice OS" — ASR loves commas after Hey.)
-    if (/^(?:hey[\s,]+|ok(?:ay)?[\s,]+)?voice\s*-?\s*os[.!?\s]*$/i.test(trimmed)) {
+    // The PTT trigger phrase alone is plumbing, not chart material — including
+    // its ASR manglings ("Hey, voice us.", "Hey, boys OS"). Full-match only.
+    if (/^(?:hey[\s,]+|ok(?:ay)?[\s,]+)?(?:voice|boys?|vice|voi)[\s,]*-?\s*(?:os|us)[.!?\s]*$/i.test(trimmed)) {
       console.log(`[voice] VoiceOS PTT trigger — not evented ← "${trimmed.slice(0, 40)}"`);
       return [];
     }

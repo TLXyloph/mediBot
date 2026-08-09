@@ -12,7 +12,11 @@ import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { cfg, VOICE_DIR } from "./config.js";
 
-export const VOICEOS_TRIGGER = /voice\s*-?\s*os\b|voiceos/i;
+// Exact "voice os" anywhere, or hey-anchored fuzzy manglings observed live
+// ("Hey, voice us", "Hey, boys OS"). Hey-anchoring keeps ambient speech from
+// false-firing a 6s chord hold (VoiceOS has native actions enabled).
+export const VOICEOS_TRIGGER =
+  /voice\s*-?\s*os\b|voiceos|(?:hey|ok(?:ay)?)[,.!\s]+(?:voice|boys?|vice|voi)[,.\s]*-?\s*(?:os|us)\b/i;
 
 const HELPER_SRC = path.join(VOICE_DIR, "scripts", "hold-ptt.swift");
 const HELPER_BIN = path.join(VOICE_DIR, ".data", "hold-ptt");

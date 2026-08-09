@@ -87,6 +87,7 @@ if (fake) {
   }, cfg.idleFlushMs);
 
   const ptt = new VoiceOSPtt();
+  void ptt.prepare();
   if (cfg.voiceosPttEnabled) {
     console.log('[voice] VoiceOS PTT: say "Hey VoiceOS", pause, then the command (VOICEOS_PTT=0 to disable)');
   }

@@ -2,7 +2,7 @@
 "use client"
 
 import { useQuery } from "convex/react"
-import { anyApi } from "convex/react"
+import { anyApi } from "convex/server"
 import { Timeline } from "@/components/Timeline"
 import { EPCRPanel } from "@/components/EPCRPanel"
 import { CompletenessBar } from "@/components/CompletenessBar"

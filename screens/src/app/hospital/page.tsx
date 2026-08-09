@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery } from "convex/react"
-import { anyApi } from "convex/react"
+import { anyApi } from "convex/server"
 import { deriveEPCR } from "@/lib/derive"
 import { VitalsTrendChart } from "@/components/VitalsTrendChart"
 import { InterventionsList } from "@/components/InterventionsList"

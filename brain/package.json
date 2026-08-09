@@ -1,0 +1,18 @@
+{
+  "name": "medibot-brain",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "MediBot Lane B — Convex event spine, derived views, and agents.",
+  "scripts": {
+    "dev": "convex dev",
+    "codegen": "convex codegen",
+    "seed": "convex run seed:demo"
+  },
+  "dependencies": {
+    "convex": "^1.43.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0"
+  }
+}

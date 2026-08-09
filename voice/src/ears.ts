@@ -43,9 +43,11 @@ export class Ears {
   }
 
   private combos(): Combo[] {
+    // AUDIO first: the locked primary model is native-audio-only (verified on
+    // this key — TEXT is rejected). Output audio is discarded either way.
     return cfg.earsModels.flatMap((model) => [
-      { model, modality: Modality.TEXT },
       { model, modality: Modality.AUDIO },
+      { model, modality: Modality.TEXT },
     ]);
   }
 

@@ -58,17 +58,19 @@ async function post(path, body) {
 async function callTool(name, args) {
   const text = String(args?.text ?? args?.question ?? "").slice(0, 2000).trim();
   if (!text) return "Nothing to log — no text provided.";
+  // Responses stay terse: VoiceOS's agent reads them aloud, and MediBot's own
+  // TTS channel is already talking — keep the double-voice to a minimum.
   if (name === "medibot_correction") {
     await post("/command", { text, kind: "correction" });
-    return `Correction logged: ${text}`;
+    return "Logged.";
   }
   if (name === "medibot_mark") {
     await post("/command", { text, kind: "mark" });
-    return `Marked on the timeline: ${text}`;
+    return "Marked.";
   }
   if (name === "medibot_ask") {
     await post("/command", { text, kind: "question" });
-    return "Question logged — MediBot will answer out loud.";
+    return "MediBot will answer aloud.";
   }
   throw new Error(`unknown tool ${name}`);
 }

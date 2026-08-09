@@ -93,24 +93,82 @@ export async function a1Status(): Promise<{
   realCallsEnabled: boolean
   phoneNumber: string | null
   wiringMode: string | null
+  webhookReady: boolean
+  configuredTargetCount: number
+  approvedTargetCount: number
+  providerVerifiedTargetCount: number
+  callableTargetCount: number
+  outboundReady: boolean
+  checkedAt: number
 }> {
+  const approved = allowedNumbers()
+  const configuredTargets = hospitals.filter((hospital) => Boolean(hospital.phone))
+  const approvedTargets = configuredTargets.filter((hospital) => hospital.phone && approved.has(hospital.phone))
+  const base = {
+    configuredTargetCount: configuredTargets.length,
+    approvedTargetCount: approvedTargets.length,
+    checkedAt: Date.now(),
+  }
   if (!process.env.A1MOBILE_TEAM_KEY) {
-    return { configured: false, realCallsEnabled: false, phoneNumber: null, wiringMode: null }
+    return {
+      configured: false,
+      realCallsEnabled: false,
+      phoneNumber: null,
+      wiringMode: null,
+      webhookReady: false,
+      providerVerifiedTargetCount: 0,
+      callableTargetCount: 0,
+      outboundReady: false,
+      ...base,
+    }
   }
   try {
     const info = await a1Request("/numbers/me")
+    const verificationInfo = await a1Request("/verified-numbers").catch(() => ({ verified_numbers: [] }))
+    const providerVerified = new Set(
+      (Array.isArray(verificationInfo.verified_numbers) ? verificationInfo.verified_numbers : [])
+        .map((value) => {
+          if (typeof value === "string") return value
+          if (value && typeof value === "object") {
+            const record = value as Record<string, unknown>
+            return String(record.phone ?? record.phone_number ?? record.number ?? "")
+          }
+          return ""
+        })
+        .filter(Boolean),
+    )
+    const providerVerifiedTargetCount = configuredTargets.filter(
+      (hospital) => hospital.phone && providerVerified.has(hospital.phone),
+    ).length
+    const callableTargetCount = approvedTargets.filter(
+      (hospital) => hospital.phone && providerVerified.has(hospital.phone),
+    ).length
+    const wiringMode = String(info.mode ?? info.wiring_mode ?? "") || null
+    const webhookReady = wiringMode?.toLowerCase() === "webhook" || Boolean(info.webhook_url)
+    const realCallsEnabled = envTrue("A1MOBILE_ALLOW_REAL_CALLS")
     return {
       configured: true,
-      realCallsEnabled: envTrue("A1MOBILE_ALLOW_REAL_CALLS"),
+      realCallsEnabled,
       phoneNumber: String(info.phone_number ?? process.env.A1MOBILE_PHONE_NUMBER ?? "") || null,
-      wiringMode: String(info.mode ?? info.wiring_mode ?? "") || null,
+      wiringMode,
+      webhookReady,
+      providerVerifiedTargetCount,
+      callableTargetCount,
+      outboundReady: realCallsEnabled && webhookReady && callableTargetCount > 0,
+      ...base,
     }
   } catch {
+    const realCallsEnabled = envTrue("A1MOBILE_ALLOW_REAL_CALLS")
     return {
       configured: true,
-      realCallsEnabled: envTrue("A1MOBILE_ALLOW_REAL_CALLS"),
+      realCallsEnabled,
       phoneNumber: process.env.A1MOBILE_PHONE_NUMBER ?? null,
       wiringMode: null,
+      webhookReady: false,
+      providerVerifiedTargetCount: 0,
+      callableTargetCount: 0,
+      outboundReady: false,
+      ...base,
     }
   }
 }
@@ -153,8 +211,9 @@ export async function coordinateHospitals(patient: CoordinationPatient, origin: 
     .filter((value): value is string => typeof value === "string" && Boolean(value))
   const sbar = sbarParts.length === 4 ? sbarParts.join("\n") : generatedSbar
   const caseId = randomUUID()
-  const canCall = Boolean(process.env.A1MOBILE_TEAM_KEY) && envTrue("A1MOBILE_ALLOW_REAL_CALLS")
   const approved = allowedNumbers()
+  const liveStatus = await a1Status()
+  const canCall = liveStatus.outboundReady
   let pointed = false
 
   if (canCall) {

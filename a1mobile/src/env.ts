@@ -14,16 +14,19 @@ export interface Environment {
   convexPatientStateFunction: string;
   convexSbarFunction: string;
   convexMock: boolean;
-  a1mobileProvider: "mock" | "rest";
-  a1mobileApiBaseUrl: string | undefined;
-  a1mobileApiKey: string | undefined;
-  a1mobileAgentId: string | undefined;
-  a1mobileCallPath: string;
-  a1mobileMessagePath: string;
-  a1mobileWebhookSecret: string | undefined;
+  a1mobileProvider: "mock" | "hack";
+  a1mobileApiBaseUrl: string;
+  a1mobileTeamKey: string | undefined;
+  a1mobilePhoneNumber: string | undefined;
+  a1mobileSipUsername: string | undefined;
+  a1mobileSipPassword: string | undefined;
+  a1mobileVoiceWebhookUrl: string | undefined;
+  a1mobileSmsWebhookUrl: string | undefined;
+  a1mobileAutoPoint: boolean;
   a1mobileAllowRealCalls: boolean;
   a1mobileMockDelayMs: number;
   a1mobileAllowedNumbers: string[];
+  a1mobileAdminToken: string | undefined;
 }
 
 function booleanValue(value: string | undefined, fallback: boolean): boolean {
@@ -41,16 +44,10 @@ function optional(value: string | undefined): string | undefined {
   return value?.trim() || undefined;
 }
 
-function pathValue(value: string | undefined, fallback: string, name: string): string {
-  const result = value?.trim() || fallback;
-  if (!result.startsWith("/")) throw new Error(`${name} must start with /`);
-  return result;
-}
-
 export function getEnvironment(): Environment {
   const provider = process.env.A1MOBILE_PROVIDER?.trim().toLowerCase() || "mock";
-  if (provider !== "mock" && provider !== "rest") {
-    throw new Error("A1MOBILE_PROVIDER must be mock or rest");
+  if (provider !== "mock" && provider !== "hack") {
+    throw new Error("A1MOBILE_PROVIDER must be mock or hack");
   }
 
   const port = integerValue(process.env.PORT, 4320, "PORT");
@@ -70,16 +67,16 @@ export function getEnvironment(): Environment {
     convexSbarFunction: process.env.CONVEX_SBAR_FUNCTION?.trim() || "events:sbar",
     convexMock: booleanValue(process.env.CONVEX_MOCK, true),
     a1mobileProvider: provider,
-    a1mobileApiBaseUrl: optional(process.env.A1MOBILE_API_BASE_URL),
-    a1mobileApiKey: optional(process.env.A1MOBILE_API_KEY),
-    a1mobileAgentId: optional(process.env.A1MOBILE_AGENT_ID),
-    a1mobileCallPath: pathValue(process.env.A1MOBILE_CALL_PATH, "/v1/calls", "A1MOBILE_CALL_PATH"),
-    a1mobileMessagePath: pathValue(
-      process.env.A1MOBILE_MESSAGE_PATH,
-      "/v1/messages",
-      "A1MOBILE_MESSAGE_PATH",
-    ),
-    a1mobileWebhookSecret: optional(process.env.A1MOBILE_WEBHOOK_SECRET),
+    a1mobileApiBaseUrl:
+      process.env.A1MOBILE_API_BASE_URL?.trim().replace(/\/$/, "") ||
+      "https://hack.a1mobile.com/api",
+    a1mobileTeamKey: optional(process.env.A1MOBILE_TEAM_KEY),
+    a1mobilePhoneNumber: optional(process.env.A1MOBILE_PHONE_NUMBER),
+    a1mobileSipUsername: optional(process.env.A1MOBILE_SIP_USERNAME),
+    a1mobileSipPassword: optional(process.env.A1MOBILE_SIP_PASSWORD),
+    a1mobileVoiceWebhookUrl: optional(process.env.A1MOBILE_VOICE_WEBHOOK_URL),
+    a1mobileSmsWebhookUrl: optional(process.env.A1MOBILE_SMS_WEBHOOK_URL),
+    a1mobileAutoPoint: booleanValue(process.env.A1MOBILE_AUTO_POINT, false),
     a1mobileAllowRealCalls: booleanValue(process.env.A1MOBILE_ALLOW_REAL_CALLS, false),
     a1mobileMockDelayMs: integerValue(
       process.env.A1MOBILE_MOCK_DELAY_MS,
@@ -90,5 +87,6 @@ export function getEnvironment(): Environment {
       .split(",")
       .map((number) => number.trim())
       .filter(Boolean),
+    a1mobileAdminToken: optional(process.env.A1MOBILE_ADMIN_TOKEN),
   };
 }

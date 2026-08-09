@@ -152,6 +152,9 @@ export const run = internalMutation({
           kind: "safety",
           severity: "high",
           reason: c.reason,
+          // Spoken verbatim by voice/'s alert channel (reads payload.say) —
+          // without this the R4 hero beat says a generic "Safety flag raised."
+          say: c.reason,
           given,
           conflictsWith: c.conflictsWith,
           pairKey: c.key,

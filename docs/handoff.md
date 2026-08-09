@@ -21,11 +21,11 @@ An ambient AI crew member for paramedics. It listens to the whole scene and writ
 
 - **Deadline:** demo freeze 5:30 PM. Demo hard cap 60 seconds.
 - **Hardware:** 4 MacBooks, 1 Samsung phone, 3 iPhones, 1 mic wired to a speaker. Map: MB1 medic app + VoiceOS + mic/speaker · MB2 hospital screen · MB3 Gemini Live page, webcam facing the Samsung phone playing the simulated monitor loop · MB4 spare/dev · iPhones: patient script + backup-video camera.
-- **Two-plane voice architecture:** VoiceOS (Mac SDK, premium sub — no server API) is the **control plane**: spoken commands operate MediBot. Ambient transcription-of-record (**data plane**) defaults to a dedicated Gemini Live "ears" session (audio in, input transcription on, no audio out) unless task A1 finds the VoiceOS SDK exposes a continuous transcript stream.
+- **Two-plane voice architecture — RESOLVED (A1, ~1:00):** VoiceOS exposes **no continuous transcript stream** (push-to-talk/hands-free dictation; transcripts land in its SQLite only after a session ends). Data plane = the dedicated Gemini Live "ears" session — running on `gemini-3.1-flash-live-preview`, which is **AUDIO-modality-only** (TEXT rejected on our key); model output is discarded. VoiceOS remains the control plane via a local-MCP integration (`voice/voiceos-integration/`): its agent routes spoken commands to tools `medibot_correction` / `medibot_mark` / `medibot_ask` → `POST 127.0.0.1:4750/command` → events. The same commands also parse straight from the ambient transcript, so R12 holds even without the VoiceOS hop.
 - **Protocol callouts are deterministic:** state-machine timers → TTS. Gemini/LLMs never own timing. Demo-mode clock runs timers at 4× (rhythm check q30s) so a callout lands inside 60s.
 - **Decoupling rule:** each lane owns exactly one directory (below) and nobody edits another lane's directory before Phase 2. `screens/` and `eyes/` call Convex by **string function names (`anyApi`)**, not generated types — zero shared files between lanes, zero merge conflicts. Rationale: we trade type safety for parallel speed today.
 - **Secrets:** keys live in per-directory `.env` files (gitignored) and in Convex env vars for agents (`npx convex env set GEMINI_API_KEY ...`). Never commit keys; never put keys in client code you screen-share.
-- **Models — all-Gemini (decided ~12:25, team has a paid key):** one provider, one SDK (`@google/genai`), one key. Agents: latest Flash (`gemini-3.1-flash`, else `gemini-2.5-flash`) with structured output. Perceptual + ears channels: `gemini-3.1-flash-live-preview` (GA fallback `gemini-2.5-flash` native audio). Callout TTS: Gemini TTS, with macOS `say` as the zero-dependency fallback. **Insurance:** lane B calls models only through a ~5-line `llm()` wrapper with an `LLM_PROVIDER` env flag, so flipping any agent to OpenAI later is config, not code.
+- **Models — all-Gemini (decided ~12:25, team has a paid key):** one provider, one SDK (`@google/genai`), one key. Agents: latest Flash (`gemini-3.1-flash`, else `gemini-2.5-flash`) with structured output. Perceptual + ears channels: `gemini-3.1-flash-live-preview` (GA fallback `gemini-2.5-flash` native audio). Callout TTS (**measured on our key: 1.9–4s per synthesis — too slow to gate an alert on**): macOS `say` speaks immediately while the Gemini TTS wav warms in a background cache, so repeated callouts (timers) get the premium voice at zero latency. **Insurance:** lane B calls models only through a ~5-line `llm()` wrapper with an `LLM_PROVIDER` env flag, so flipping any agent to OpenAI later is config, not code.
 - **Prize-optics note, accepted:** the prize pool is OpenAI credits and our stack no longer uses OpenAI. We're betting demo quality outweighs stack politics; the `llm()` wrapper keeps the flip open if we change our minds before 5:30.
 
 ## The contract (everything couples through this, nothing else)
@@ -42,6 +42,12 @@ role:   medic | patient | partner | bystander
 ```
 
 ePCR, SBAR, and both dashboards are derived views over this log. Agents read the log and append. **Nobody mutates or deletes events, ever.** Corrections are new events referencing the corrected one via `refs`.
+
+**Validator facts (verified against brain/'s deployed code — read before writing an anyApi caller):**
+
+- `role`, `conf`, `refs`, `ts` are `v.optional(...)`: **omit them when unset — an explicit `null` is rejected** and the append fails.
+- `events:append` args: `{ts?, type, source, role?, payload, conf?, refs?}`. Public `append` auto-schedules the scribe on `utterance` events (and only those). `events:timeline` takes `{since?, limit?}` and returns a row array.
+- Payload conventions: spoken questions arrive as `utterance` events with `payload.question` (eyes/ answers them); `flag`/`timer` events should carry speakable text in `payload.say` or `payload.text` (voice/ speaks either, else a generic line); ambient utterances may include `payload.speaker` (`spk_N` hint from Gemini) for the scribe.
 
 ## Repo layout — one lane per person, claim yours in the group chat
 
@@ -60,6 +66,7 @@ ePCR, SBAR, and both dashboards are derived views over this log. Agents read the
 - **Phase 3 → freeze:** tag `demo-freeze` on `main` at 5:30. After the tag nothing merges without all four agreeing; emergency fix = `p3-hotfix` branch, then re-tag.
 - **AI-agent rules (Claude Code and friends):** an agent session runs on your lane branch and may only modify files inside your lane directory. Running two or more agents in parallel on one machine: give each its own worktree + sub-branch so they never share a checkout — `git worktree add ../mediBot-eyes-monitor p1-eyes-monitor` (Claude Code's built-in worktree isolation does the same automatically). Small frequent commits, no force-pushes ever, `.env` never staged.
 - **The demo runs from the tag:** at 5:30, `git checkout demo-freeze` on MB1/MB2/MB3 so every machine runs identical code.
+- **Status ~1:45 PM: all four lane branches are already merged to `main`** (ahead of the 3:30 plan). Work continues on `main` with commits scoped to your own lane dir; cross-lane fixes are now Phase-2 fair game. The 5:30 `demo-freeze` tag plan stands.
 
 ## Locked requirements
 
@@ -86,11 +93,11 @@ ePCR, SBAR, and both dashboards are derived views over this log. Agents read the
 
 ### Phase 1 — Lanes in parallel (12:45 – 3:30). Each block below is self-contained; pick yours up independently on your `p1-<lane>` branch (see Git workflow above).
 
-**Lane A — `voice/` (Voice I/O)**
-- A1. 15-min timebox: does the VoiceOS SDK expose a continuous transcript stream? Post the verdict in chat. **Done when:** data-plane decision (VoiceOS vs Gemini Live "ears" session) is posted.
-- A2. Ambient ASR → `utterance` events via chosen data plane. **Done when:** talking near the mic produces live rows (R1).
-- A3. VoiceOS command grammar: "correction — …", "MediBot, mark <thing>", "MediBot, <question>" (questions route to a `question` payload event that `eyes/` answers, or directly to eyes' session if simpler). **Done when:** each spoken command produces its event type (R12).
-- A4. TTS output channel: subscribe to `flag` + `timer` events → speak them. **Done when:** hand-inserting a flag event causes a spoken alert < 2s (feeds R4/R6).
+**Lane A — `voice/` (Voice I/O) — ✅ BUILT, merged to `main`**
+- A1 ✅ No VoiceOS transcript stream → Gemini Live ears session is the data plane (see Constraints).
+- A2 ✅ `cd voice && npm run dev`: mic (sox or ffmpeg) → ears session → `utterance` events. R1 verified live on the team key. Keyless dev: `npm run fake`; key sanity-check: `npm run check:gemini -- --tts`.
+- A3 ✅ Command grammar ("correction — …", "MediBot, mark …", "MediBot, <question>") parses from the ambient transcript AND ships as VoiceOS MCP tools (`voice/voiceos-integration/`) hitting `POST 127.0.0.1:4750/command`. All three kinds verified → correct event types. App-side install of the integration is the one open item (see Open questions).
+- A4 ✅ `flag`/`timer` → spoken alert < 2s, verified via `npm run insert:flag` / `insert:timer`. Reactive Convex subscription with 500ms polling fallback; local JSONL mode when `CONVEX_URL` is unset. Remaining: put the shared `CONVEX_URL` into `voice/.env`.
 
 **Lane B — `brain/` (Convex + agents)**
 - B1. Schema + append mutation + queries: `timeline`, `epcr` (derived fields), `sbar`, `patientState` (meds/allergies/last-epi/protocol position). **Done when:** queries return correct derivations for a hand-built event sequence.
@@ -131,7 +138,8 @@ ePCR, SBAR, and both dashboards are derived views over this log. Agents read the
 
 ## Open questions & risks
 
-- **VoiceOS transcript stream?** Unknown until A1's 15-min check. Fallback (Gemini Live "ears" session) is pre-decided, so this can't block longer than 15 minutes.
+- ~~VoiceOS transcript stream?~~ **Resolved: none exists** → ears session is the data plane, running.
+- **VoiceOS integration install (open — and prime Best-VoiceOS-Feedback material):** the documented `Settings → Agent Mode → Integrations` path doesn't exist in 0.1.21; the real Apps-tab "Install from folder" button is **remotely feature-gated** (statsig/growthbook) and doesn't render for our account; `@voiceos/integration-sdk` from the docs isn't on npm. Identified no-UI route: quit VoiceOS, add an entry (`{manifest, dirPath, ownerUserId, enabled, installedAt}`) to `installedIntegrations` in `~/Library/Application Support/VoiceOS/config.json`, relaunch; fallback is repointing a Studio-created install. Meanwhile voice-only control (R12) already works via the ambient-transcript grammar.
 - **TTS audibility:** MediBot speaks from a MacBook; the mic→speaker rig is for the room. Test routing MB1 audio out to the speaker at Phase 2; fallback = hold mic to laptop.
 - **Camera stability:** no tripod — prop the Samsung + webcam rig and mark positions with tape before rehearsal.
 - **Venue wifi:** Convex + Live API + Realtime all need network. Test on venue wifi at Phase 0; fallback = iPhone hotspot (test that too).

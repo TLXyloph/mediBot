@@ -20,6 +20,15 @@ export const run = internalAction({
 
     const text: string = ev.payload?.text ?? String(ev.payload ?? "");
 
+    // Skip utterances that are commands/questions addressed to the assistant —
+    // the voice lane already handles those. Extracting from them creates phantom
+    // clinical events (e.g. "MediBot, when was the last epi?" must NOT become a
+    // medication). Mark processed so it isn't retried.
+    if (isCommandUtterance(ev, text)) {
+      await ctx.runMutation(internal.events.markProcessed, { eventId: args.eventId });
+      return;
+    }
+
     // No key wired yet (Phase 0): mark processed so we don't spin/retry, and
     // leave a breadcrumb. B2 goes live the moment GEMINI_API_KEY is set.
     if (!text.trim() || !llmConfigured()) {
@@ -97,6 +106,16 @@ const SCRIBE_SCHEMA = {
   },
   required: ["events"],
 };
+
+// True if this utterance is a command/question directed at the assistant rather
+// than scene narration to be charted. Two signals:
+//  - the voice lane tagged it (payload.question / mark / command), or
+//  - it opens with a wake word ("MediBot" / "Scribe").
+function isCommandUtterance(ev: any, text: string): boolean {
+  const p = ev.payload ?? {};
+  if (p.question || p.mark || p.command) return true;
+  return /^\s*(medi[\s-]?bot|scribe)\b/i.test(text);
+}
 
 async function extractFromUtterance(text: string): Promise<Array<any>> {
   const raw = await llm(

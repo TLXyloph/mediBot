@@ -55,7 +55,7 @@ export const cfg = {
   micBackend: (env.MIC_BACKEND ?? "auto") as "auto" | "ffmpeg" | "sox",
   micDevice: env.MIC_DEVICE ?? "default",
   cmdPort: num(env.CMD_PORT, 4750),
-  idleFlushMs: num(env.IDLE_FLUSH_MS, 1200),
+  idleFlushMs: num(env.IDLE_FLUSH_MS, 1500),
   eventsLog: path.join(VOICE_DIR, ".data", "events.log"),
 };
 

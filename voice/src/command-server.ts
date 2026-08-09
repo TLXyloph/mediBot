@@ -4,7 +4,7 @@
 
 import http from "node:http";
 import { cfg } from "./config.js";
-import { handleUtterance } from "./pipeline.js";
+import type { Pipeline } from "./pipeline.js";
 import type { EventSink } from "./sink.js";
 import type { Speaker } from "./tts.js";
 
@@ -31,7 +31,7 @@ function json(res: http.ServerResponse, code: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
-export function startCommandServer(sink: EventSink, speaker: Speaker): http.Server {
+export function startCommandServer(pipeline: Pipeline, sink: EventSink, speaker: Speaker): http.Server {
   const server = http.createServer(async (req, res) => {
     try {
       if (req.method === "GET" && req.url === "/health") {
@@ -58,7 +58,7 @@ export function startCommandServer(sink: EventSink, speaker: Speaker): http.Serv
         if (kind !== undefined && !KINDS.has(kind)) {
           return json(res, 400, { ok: false, error: "kind must be correction|mark|question" });
         }
-        const events = handleUtterance(text, sink, {
+        const events = pipeline(text, {
           kind: kind as "correction" | "mark" | "question" | undefined,
         });
         return json(res, 200, { ok: true, events: events.map((e) => e.type) });

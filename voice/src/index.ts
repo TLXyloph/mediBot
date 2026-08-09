@@ -10,7 +10,7 @@ import { Speaker } from "./tts.js";
 import { TranscriptSegmenter } from "./segmenter.js";
 import { Ears } from "./ears.js";
 import { Mic } from "./mic.js";
-import { handleUtterance } from "./pipeline.js";
+import { createPipeline } from "./pipeline.js";
 import { startCommandServer } from "./command-server.js";
 
 const fake = process.argv.includes("--fake");
@@ -36,7 +36,8 @@ const unwatch = sink.watchAlerts((e) => {
 console.log(`[voice] alerts: flag+timer → TTS (${cfg.ttsEngine === "say" ? "macOS say" : "instant say, Gemini voice cached for repeats"})`);
 speaker.prewarm(["Protocol timer due.", "Safety flag raised."]);
 
-const server = startCommandServer(sink, speaker);
+const pipeline = createPipeline(sink);
+const server = startCommandServer(pipeline, sink, speaker);
 
 let ears: Ears | null = null;
 let mic: Mic | null = null;
@@ -45,7 +46,7 @@ if (fake) {
   console.log('[voice] FAKE MODE — type transcript lines (e.g. "correction BP 90 over 60"), Ctrl-D to end');
   const rl = readline.createInterface({ input: process.stdin });
   rl.on("line", (line) => {
-    if (line.trim()) handleUtterance(line, sink);
+    if (line.trim()) pipeline(line);
   });
   rl.on("close", () => {
     // let sink appends settle, then exit (piped-input smoke runs rely on this)
@@ -57,7 +58,7 @@ if (fake) {
   );
 } else {
   const segmenter = new TranscriptSegmenter((text, meta) => {
-    handleUtterance(text, sink, { speaker: meta.speaker });
+    pipeline(text, { speaker: meta.speaker });
   }, cfg.idleFlushMs);
 
   ears = new Ears(

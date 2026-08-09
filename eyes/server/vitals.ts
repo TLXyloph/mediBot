@@ -51,21 +51,25 @@ export function vitalFingerprint(reading: VitalsReading): string {
   ].join(":");
 }
 
-export function toVitalEvent(reading: VitalsReading, now = Date.now()): VitalEvent {
-  return {
+// Contract shape (brain/README.md): one event per vital, payload {name, value}.
+// All four share one ts so screens/ merges them into a single reading, brain's
+// sbar/epcr bucket them by name, and nothing sees the old combined shape.
+export function toVitalEvents(reading: VitalsReading, now = Date.now()): VitalEvent[] {
+  const vitals: Array<[string, number]> = [
+    ["hr", reading.hrBpm],
+    ["spo2", reading.spo2Pct],
+    ["sbp", reading.systolicMmHg],
+    ["dbp", reading.diastolicMmHg],
+  ];
+  return vitals.map(([name, value]) => ({
     ts: now,
     type: "vital",
     source: "vision",
     role: "medic",
-    payload: {
-      hrBpm: reading.hrBpm,
-      spo2Pct: reading.spo2Pct,
-      systolicMmHg: reading.systolicMmHg,
-      diastolicMmHg: reading.diastolicMmHg,
-    },
+    payload: { name, value },
     conf: reading.confidence,
     refs: [],
-  };
+  }));
 }
 
 export class VitalPublisher {
@@ -81,15 +85,20 @@ export class VitalPublisher {
       return { accepted: false, duplicate: true };
     }
 
-    const event = toVitalEvent(reading);
-    const eventId = await this.sink.appendVital(event);
+    const events = toVitalEvents(reading);
+    let firstId: string | undefined;
+    for (const event of events) {
+      const id = await this.sink.appendVital(event);
+      firstId ??= id;
+    }
     this.lastPublishedFingerprint = fingerprint;
 
     return {
       accepted: true,
       duplicate: false,
-      event,
-      ...(eventId ? { eventId } : {}),
+      event: events[0],
+      events,
+      ...(firstId ? { eventId: firstId } : {}),
     };
   }
 }

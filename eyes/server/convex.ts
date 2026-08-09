@@ -34,15 +34,43 @@ function nullableTimestamp(value: unknown): number | null {
   return null;
 }
 
+// brain returns medications as objects ({name, role, ts, eventId}) and
+// protocolPosition as an object — accept both those and plain strings.
+function nameStrings(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((v) =>
+      typeof v === "string"
+        ? v
+        : v && typeof v === "object"
+          ? String((v as Record<string, unknown>).name ?? "")
+          : "",
+    )
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function positionString(value: unknown): string | null {
+  if (typeof value === "string") return value.trim() || null;
+  if (value && typeof value === "object") {
+    const o = value as Record<string, unknown>;
+    const parts = [o.name ?? o.protocol, o.phase ?? o.state].filter(
+      (p) => typeof p === "string" && p,
+    );
+    return parts.length > 0 ? parts.join(" — ") : null;
+  }
+  return null;
+}
+
 function normalizePatientState(value: unknown): PatientState {
   const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   return {
-    medications: strings(raw.medications ?? raw.meds),
-    allergies: strings(raw.allergies),
+    medications: nameStrings(raw.medications ?? raw.meds),
+    allergies: nameStrings(raw.allergies),
     lastEpinephrineAt: nullableTimestamp(
       raw.lastEpinephrineAt ?? raw.lastEpiAt ?? raw.lastEpi,
     ),
-    protocolPosition: nullableString(raw.protocolPosition ?? raw.protocol_state),
+    protocolPosition: positionString(raw.protocolPosition ?? raw.protocol_state),
   };
 }
 

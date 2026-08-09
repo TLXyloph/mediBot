@@ -18,8 +18,8 @@
 ## D1 — five-minute Live soak
 
 - Leave webcam and mic running for five minutes.
-- Speak normal room conversation without “MediBot”: no audio may play.
-- Say “MediBot, status check”: one short audio response may play.
+- Speak normal room conversation without “Scribe”: no audio may play.
+- Say “Scribe, status check”: one short audio response may play.
 - Fail if the browser exposes a long-lived API key in its source, network URL, or bundle.
 
 ## D2 / R10 / R11
@@ -27,7 +27,7 @@
 - At a monitor transition, start a stopwatch. A changed `vital` row must appear in Convex in under five seconds.
 - Confirm repeated reads of the same tuple do not create additional rows.
 - Seed `patientState` with a known last-epinephrine timestamp.
-- Say: **“MediBot, when was the last epi?”** Audio must begin within 2.5 seconds and match Convex. If the value is absent, MediBot must say it is unavailable.
+- Say: **“Scribe, when was the last epi?”** Audio must begin within 2.5 seconds and match Convex. If the value is absent, MediBot must say it is unavailable.
 
 ## D3 — simulated monitor
 
@@ -49,7 +49,7 @@
 | 0–15s | Patient: “My chest hurts. I take warfarin.” | Maintain silent ambient watch; Lane A/B populate the chart. |
 | 15–25s | Presenter gestures at the camera rig. | Latest HR/SpO₂/BP is already in Convex from monitor vision. |
 | 25–35s | Medic: “Giving aspirin.” | Stay silent; Lane B safety flag and Lane A TTS own the alert. |
-| 35–45s | Medic: “MediBot, when was the last epi?” | Call `query_patient_state`; answer once, briefly, from Convex. |
+| 35–45s | Medic: “Scribe, when was the last epi?” | Call `query_patient_state`; answer once, briefly, from Convex. |
 | 45–60s | Reveal hospital screen and live SBAR. | Keep vitals flowing; no extra narration. |
 
 ## Recording and freeze

@@ -34,7 +34,8 @@ export function getEnvironment(): EyesEnvironment {
     convexUrl: process.env.CONVEX_URL?.trim() || undefined,
     convexAppendFunction: process.env.CONVEX_APPEND_FUNCTION?.trim() || "events:append",
     convexPatientStateFunction:
-      process.env.CONVEX_PATIENT_STATE_FUNCTION?.trim() || "events:patientState",
+      // brain/'s real function path (see brain/README.md function-name contract)
+      process.env.CONVEX_PATIENT_STATE_FUNCTION?.trim() || "patientState:patientState",
     convexMock: parseBoolean(process.env.CONVEX_MOCK),
     host: process.env.HOST?.trim() || "0.0.0.0",
     port: parsePort(process.env.PORT),

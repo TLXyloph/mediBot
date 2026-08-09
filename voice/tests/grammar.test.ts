@@ -50,8 +50,71 @@ test("plain speech is not a command", () => {
   assert.equal(parseCommand("patient says his chest hurts and he takes warfarin"), null);
 });
 
-test("bare wake word is not a command", () => {
-  assert.equal(parseCommand("MediBot."), null);
+test("bare wake word returns wake sentinel for the pipeline hangover", () => {
+  assert.deepEqual(parseCommand("MediBot."), { kind: "wake", text: "" });
+});
+
+// ---- real ASR output observed live on 2026-08-09 (OOV wake word mangling) ----
+
+test("ASR 'Merbau Mark Abby Given' → mark (say-voice variant)", () => {
+  assert.deepEqual(parseCommand("Merbau Mark Abby Given"), { kind: "mark", text: "Abby Given" });
+});
+
+test("'Mark' itself never matches as a wake word", () => {
+  assert.deepEqual(parseCommand("Mark epinephrine given"), { kind: "mark", text: "epinephrine given" });
+});
+
+test("ASR 'Metabott Mark Appy Given' → mark", () => {
+  assert.deepEqual(parseCommand("Metabott Mark Appy Given"), { kind: "mark", text: "Appy Given" });
+});
+
+test("ASR 'metabolomic epi given' → mark via given-heuristic", () => {
+  assert.deepEqual(parseCommand("metabolomic epi given"), { kind: "mark", text: "epi given" });
+});
+
+test("ASR 'Maddie Bart' alone → wake sentinel", () => {
+  assert.deepEqual(parseCommand("Maddie Bart"), { kind: "wake", text: "" });
+});
+
+test("ASR 'Mark epinephrine given' (wake dropped) → bare mark", () => {
+  assert.deepEqual(parseCommand("Mark epinephrine given"), { kind: "mark", text: "epinephrine given" });
+});
+
+test("ASR 'When was the last Epic?' (wake dropped) → bare query template", () => {
+  assert.deepEqual(parseCommand("When was the last Epic?"), {
+    kind: "question",
+    text: "When was the last Epic?",
+  });
+});
+
+test("ASR 'at the Defrin given.' stays a plain utterance (scribe's job)", () => {
+  assert.equal(parseCommand("at the Defrin given."), null);
+});
+
+test("ASR 'That a boy, Mark. Epinephrine given.' → mark via window recovery", () => {
+  assert.deepEqual(parseCommand("That a boy, Mark. Epinephrine given."), {
+    kind: "mark",
+    text: "Epinephrine given",
+  });
+});
+
+test("ASR 'Never bought Mark Ecko given.' → mark via window recovery", () => {
+  assert.deepEqual(parseCommand("Never bought Mark Ecko given."), {
+    kind: "mark",
+    text: "Ecko given",
+  });
+});
+
+test("ambient given-statement without wake is NOT a command", () => {
+  assert.equal(parseCommand("epi given two minutes ago"), null);
+});
+
+test("assumeWake treats bare text as post-wake", () => {
+  assert.deepEqual(parseCommand("epi given", { assumeWake: true }), { kind: "mark", text: "epi given" });
+  assert.deepEqual(parseCommand("when was the last epi", { assumeWake: true }), {
+    kind: "question",
+    text: "when was the last epi",
+  });
 });
 
 test("correction event shape", () => {

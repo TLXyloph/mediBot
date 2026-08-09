@@ -12,7 +12,7 @@ import type { ConvexEvent } from "@/types/events"
 import { useState } from "react"
 
 export default function MedicPage() {
-  const events = (useQuery(anyApi.events.timeline) ?? []) as ConvexEvent[]
+  const events = (useQuery(anyApi.events.timeline, {}) ?? []) as ConvexEvent[]
   const epcr = deriveEPCR(events)
   const [provenanceId, setProvenanceId] = useState<string | null>(null)
   const provenanceEvent = provenanceId

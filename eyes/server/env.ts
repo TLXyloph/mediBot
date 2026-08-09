@@ -1,5 +1,10 @@
 import dotenv from "dotenv";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 
+// Anchored to eyes/.env so launches work from any cwd (npm run dev, tsx direct,
+// demo scripts). Falls back to plain cwd resolution for anything not set there.
+dotenv.config({ path: path.join(path.dirname(fileURLToPath(import.meta.url)), "..", ".env") });
 dotenv.config();
 
 export interface EyesEnvironment {

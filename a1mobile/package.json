@@ -8,7 +8,9 @@
     "build": "npm run typecheck && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "start": "node dist/server/index.js"
+    "start": "node dist/server/index.js",
+    "a1": "tsx scripts/a1mobile.ts",
+    "a1:info": "tsx scripts/a1mobile.ts info"
   },
   "dependencies": {
     "@google/genai": "^2.16.0",

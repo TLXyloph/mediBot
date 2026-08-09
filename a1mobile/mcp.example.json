@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "a1mobile": {
+      "type": "http",
+      "url": "https://hack.a1mobile.com/mcp/"
+    }
+  }
+}

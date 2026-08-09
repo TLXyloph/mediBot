@@ -1,12 +1,12 @@
 import express, { type NextFunction, type Request, type Response } from "express";
 import { resolve } from "node:path";
 import { getEnvironment } from "../src/env.js";
-import { ConvexCoordinationGateway } from "../src/convex.js";
+import { ConvexCoordinationGateway, coordinationEvent } from "../src/convex.js";
 import { HospitalCoordinator } from "../src/coordinator.js";
 import { cloneDemoHospitals, DEMO_PATIENT } from "../src/hospitals.js";
 import { GeminiRequirementsEngine } from "../src/requirements.js";
 import { MockA1MobileProvider } from "../src/providers/mock.js";
-import { RestA1MobileProvider } from "../src/providers/rest.js";
+import { HackA1MobileProvider } from "../src/providers/hack.js";
 import type { A1MobileProvider } from "../src/providers/provider.js";
 import type { Hospital, PatientSnapshot } from "../src/types.js";
 
@@ -16,9 +16,12 @@ interface RawBodyRequest extends Request {
 
 const environment = getEnvironment();
 const events = new ConvexCoordinationGateway(environment);
+const hackClient = environment.a1mobileTeamKey
+  ? new HackA1MobileProvider(environment)
+  : undefined;
 const provider: A1MobileProvider =
-  environment.a1mobileProvider === "rest"
-    ? new RestA1MobileProvider(environment)
+  environment.a1mobileProvider === "hack"
+    ? hackClient ?? new HackA1MobileProvider(environment)
     : new MockA1MobileProvider(environment);
 const coordinator = new HospitalCoordinator(
   environment,
@@ -37,6 +40,33 @@ app.use(
     },
   }),
 );
+app.use(
+  express.urlencoded({
+    extended: false,
+    limit: "64kb",
+    verify: (request, _response, buffer) => {
+      (request as RawBodyRequest).rawBody = Buffer.from(buffer);
+    },
+  }),
+);
+
+function relaySignature(request: Request): string | undefined {
+  return request.header("x-a1-signature") ?? undefined;
+}
+
+function voiceField(body: unknown, names: string[]): string | undefined {
+  if (!body || typeof body !== "object") return undefined;
+  const raw = body as Record<string, unknown>;
+  for (const name of names) {
+    const value = raw[name];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
+function texml(response: Response, body: string): void {
+  response.status(200).type("application/xml").send(body);
+}
 
 function isPatientSnapshot(value: unknown): value is PatientSnapshot {
   if (!value || typeof value !== "object") return false;
@@ -83,6 +113,8 @@ app.get("/api/health", (_request, response) => {
     service: "medcrew-a1mobile",
     provider: provider.name,
     realCallsEnabled: environment.a1mobileAllowRealCalls,
+    a1mobileConfigured: Boolean(environment.a1mobileTeamKey),
+    voiceWebhookConfigured: Boolean(environment.a1mobileVoiceWebhookUrl),
     convexMode: events.mode,
     geminiMode: environment.geminiMock || !environment.geminiApiKey ? "mock" : "live",
   });
@@ -151,7 +183,7 @@ app.post("/api/cases/:caseId/confirm", async (request, response) => {
 });
 
 app.post("/api/a1mobile/webhook", async (request: RawBodyRequest, response) => {
-  const signature = request.header("x-a1mobile-signature") ?? undefined;
+  const signature = relaySignature(request);
   if (!provider.verifyWebhook(request.rawBody ?? Buffer.alloc(0), signature)) {
     response.status(401).json({ error: "Invalid webhook signature" });
     return;
@@ -159,6 +191,71 @@ app.post("/api/a1mobile/webhook", async (request: RawBodyRequest, response) => {
   const result = provider.parseWebhook(request.body);
   const value = await coordinator.recordWebhook(result);
   response.json({ ok: true, case: value });
+});
+
+app.all("/voice", async (request: RawBodyRequest, response) => {
+  if (!hackClient) {
+    texml(response, '<?xml version="1.0" encoding="UTF-8"?><Response><Say>MedCrew voice coordination is not configured.</Say><Hangup/></Response>');
+    return;
+  }
+  if (!hackClient.verifyWebhook(request.rawBody ?? Buffer.alloc(0), relaySignature(request))) {
+    response.status(401).send("Invalid a1mobile relay signature");
+    return;
+  }
+  const toNumber = voiceField(request.body, ["To", "to", "Called", "called"]);
+  const call = toNumber ? hackClient.pendingCall(toNumber) : undefined;
+  if (!call || !toNumber) {
+    texml(response, '<?xml version="1.0" encoding="UTF-8"?><Response><Say>No active MedCrew coordination request was found.</Say><Hangup/></Response>');
+    return;
+  }
+  const actionBase = new URL(environment.a1mobileVoiceWebhookUrl ?? environment.publicBaseUrl);
+  actionBase.pathname = `${actionBase.pathname.replace(/\/$/, "")}/response`;
+  actionBase.search = new URLSearchParams({
+    to: toNumber,
+    token: hackClient.pendingToken(toNumber) ?? "",
+  }).toString();
+  texml(response, hackClient.initialVoiceTexml(call, actionBase.toString()));
+});
+
+app.post("/voice/response", async (request: RawBodyRequest, response) => {
+  if (!hackClient) {
+    texml(response, '<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>');
+    return;
+  }
+  const toNumber = typeof request.query.to === "string" ? request.query.to : undefined;
+  const token = typeof request.query.token === "string" ? request.query.token : undefined;
+  const signed = hackClient.verifyWebhook(request.rawBody ?? Buffer.alloc(0), relaySignature(request));
+  const tokenValid = toNumber ? hackClient.verifyPendingToken(toNumber, token) : false;
+  if (!signed && !tokenValid) {
+    response.status(401).send("Invalid a1mobile relay signature");
+    return;
+  }
+  const transcript = voiceField(request.body, ["SpeechResult", "speech_result", "transcript"]);
+  const callId = voiceField(request.body, ["CallSid", "call_sid", "callId", "call_id"]);
+  const call = toNumber ? hackClient.pendingCall(toNumber) : undefined;
+  if (call && toNumber && transcript) {
+    await coordinator.recordWebhook(
+      hackClient.speechResult(call, transcript, callId ?? `a1-voice-${Date.now()}`),
+    );
+    hackClient.finishPendingCall(toNumber);
+  }
+  texml(response, hackClient.completionVoiceTexml());
+});
+
+app.post("/sms", async (request: RawBodyRequest, response) => {
+  if (!hackClient || !hackClient.verifyWebhook(request.rawBody ?? Buffer.alloc(0), relaySignature(request))) {
+    response.status(401).json({ error: "Invalid a1mobile relay signature" });
+    return;
+  }
+  const from = voiceField(request.body, ["from", "From"]);
+  const body = voiceField(request.body, ["body", "Body", "text"]);
+  await events.append(
+    coordinationEvent("a1mobile_sms_received", {
+      ...(from ? { from } : {}),
+      ...(body ? { body } : {}),
+    }, "system"),
+  );
+  response.json({ ok: true });
 });
 
 app.post("/api/hospitals/:hospitalId/availability", (request, response) => {
@@ -190,4 +287,10 @@ app.listen(environment.port, environment.host, () => {
   console.log(
     `MedCrew + a1mobile running at http://localhost:${environment.port} (${provider.name}, Convex ${events.mode})`,
   );
+  if (environment.a1mobileAutoPoint && environment.a1mobileVoiceWebhookUrl && hackClient) {
+    void hackClient
+      .pointNumber(environment.a1mobileVoiceWebhookUrl)
+      .then(() => console.log("a1mobile number pointed to the configured voice webhook"))
+      .catch((error: unknown) => console.error("Unable to point a1mobile number", error));
+  }
 });

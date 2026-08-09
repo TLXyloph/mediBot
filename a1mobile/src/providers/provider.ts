@@ -13,7 +13,7 @@ export interface HandoffMessage {
 }
 
 export interface A1MobileProvider {
-  readonly name: "mock" | "rest";
+  readonly name: "mock" | "hack";
   placeCoordinationCall(call: CoordinationCall): Promise<CallStartResult>;
   sendHandoff(message: HandoffMessage): Promise<void>;
   parseWebhook(payload: unknown): ProviderWebhookResult;

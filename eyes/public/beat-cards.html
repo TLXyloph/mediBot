@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>MediBot — 60-second beat cards</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; color: #211b17; background: #eee7df; font-family: Arial, sans-serif; }
+      main { width: min(1100px, calc(100% - 32px)); margin: 24px auto; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      article { position: relative; min-height: 310px; padding: 30px; background: #fffaf4; border: 2px solid #2a231e; border-radius: 22px; break-inside: avoid; }
+      article::before { content: attr(data-time); position: absolute; top: 25px; right: 28px; color: #ff5900; font: 700 28px ui-monospace, monospace; }
+      small { color: #ff5900; font-weight: 800; letter-spacing: .14em; }
+      h1 { margin: 48px 0 16px; max-width: 80%; font-size: 34px; line-height: 1.08; letter-spacing: -.04em; }
+      p { margin: 0; color: #6c625b; font-size: 18px; line-height: 1.5; }
+      blockquote { margin: 22px 0 0; padding: 16px 18px; color: white; background: #241e1a; border-radius: 14px; font-size: 21px; font-weight: 700; }
+      .close { border-color: #ff5900; background: #ffeadc; }
+      @media print { body { background: white; } main { width: 100%; margin: 0; gap: 8mm; } article { min-height: 125mm; } }
+      @page { size: letter landscape; margin: 8mm; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <article data-time="0–15s"><small>01 · AMBIENT</small><h1>Patient speaks. The chart writes itself.</h1><blockquote>“My chest hurts. I take warfarin.”</blockquote></article>
+      <article data-time="15–25s"><small>02 · EYES</small><h1>Gesture at the camera and monitor.</h1><p>HR, SpO₂, and BP have been logging themselves into the evidence timeline.</p></article>
+      <article data-time="25–35s"><small>03 · SAFETY</small><h1>Trigger the scripted medication conflict.</h1><blockquote>“Giving aspirin.”</blockquote></article>
+      <article data-time="35–45s"><small>04 · ASK</small><h1>Use the wake word, then pause.</h1><blockquote>“MediBot, when was the last epi?”</blockquote></article>
+      <article class="close" data-time="45–60s"><small>05 · HANDOFF</small><h1>Reveal the hospital screen.</h1><p>Vitals trend, interventions, and SBAR are already waiting before arrival.</p></article>
+      <article data-time="5:15"><small>BACKUP</small><h1>Verify the video before freeze.</h1><p>Watch the full file with sound. Two clean live runs before 5:30.</p></article>
+    </main>
+  </body>
+</html>

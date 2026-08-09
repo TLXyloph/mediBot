@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "id": "com.medibot.voice",
+  "version": "0.1.0",
+  "name": "MediBot",
+  "summary": "Log corrections, time-marks, and patient questions to the live MediBot chart by voice.",
+  "publisher": "MediBot team",
+  "description": "Ambient AI crew member for paramedics. Logs corrections, time-marks, and questions to the live patient chart by voice.",
+  "runtime": {
+    "kind": "local-mcp",
+    "command": "/Users/samvrithbandi/.bun/bin/bun",
+    "args": ["/Users/samvrithbandi/Desktop/hackathons/voiceOS/mediBot/voice/voiceos-integration/server.mjs"]
+  },
+  "tools": [
+    {
+      "name": "medibot_correction",
+      "title": "Log a chart correction",
+      "description": "Call when the user says 'correction' followed by corrected patient data, e.g. 'correction — BP 90 over 60' or 'correction, the patient takes warfarin not heparin'. Records a non-destructive amendment to the patient chart. Pass the corrected fact exactly as spoken, without the word 'correction'.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "The corrected fact exactly as spoken, e.g. 'BP 90 over 60'"
+          }
+        },
+        "required": ["text"]
+      }
+    },
+    {
+      "name": "medibot_mark",
+      "title": "Mark an event time",
+      "description": "Call when the user asks MediBot to mark, log, or timestamp a clinical moment, e.g. 'MediBot, mark epi given', 'mark time of arrest', 'mark ROSC'. Stamps the event on the patient timeline at the current time.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "What to mark, e.g. 'epi given'"
+          }
+        },
+        "required": ["text"]
+      }
+    },
+    {
+      "name": "medibot_ask",
+      "title": "Ask MediBot about the patient",
+      "description": "Call when the user asks MediBot a question about the patient, medications, vitals, or incident timeline, e.g. 'MediBot, when was the last epi?', 'MediBot, what's the latest blood pressure?'. The question is logged and MediBot answers out loud.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "The question exactly as asked"
+          }
+        },
+        "required": ["question"]
+      }
+    }
+  ]
+}

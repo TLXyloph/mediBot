@@ -12,6 +12,7 @@ import { Ears } from "./ears.js";
 import { Mic } from "./mic.js";
 import { createPipeline } from "./pipeline.js";
 import { startCommandServer } from "./command-server.js";
+import { VoiceOSPtt } from "./voiceos-ptt.js";
 
 const fake = process.argv.includes("--fake");
 
@@ -85,8 +86,16 @@ if (fake) {
     pipeline(text, { speaker: meta.speaker });
   }, cfg.idleFlushMs);
 
+  const ptt = new VoiceOSPtt();
+  if (cfg.voiceosPttEnabled) {
+    console.log('[voice] VoiceOS PTT: say "Hey VoiceOS", pause, then the command (VOICEOS_PTT=0 to disable)');
+  }
+
   ears = new Ears(
-    (chunk, meta) => segmenter.push(chunk, meta),
+    (chunk, meta) => {
+      segmenter.push(chunk, meta);
+      ptt.observeChunk(chunk); // chunk-level: the hold must start before the command
+    },
     () => segmenter.boundary(),
   );
   mic = new Mic((pcm) => ears?.sendAudio(pcm));

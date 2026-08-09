@@ -1,7 +1,22 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createPipeline } from "../src/pipeline.js";
+import { VoiceOSPtt } from "../src/voiceos-ptt.js";
 import type { EventSink } from "../src/sink.js";
+
+test("PTT triggers once across chunks, then debounces", () => {
+  let holds = 0;
+  const ptt = new VoiceOSPtt(6000, () => {}, (_ms, done) => {
+    holds++;
+    done();
+  });
+  ptt.observeChunk("hey voice");
+  assert.equal(holds, 0);
+  ptt.observeChunk(" os correction");
+  assert.equal(holds, 1);
+  ptt.observeChunk("hey voiceos again");
+  assert.equal(holds, 1);
+});
 
 function stubSink(): EventSink {
   return {
@@ -49,6 +64,14 @@ test("same command via ears then VoiceOS within 12s appends once", () => {
   assert.deepEqual(second, []);
   const different = pipeline("BP 90 over 60", { kind: "correction" });
   assert.equal(different.length, 1);
+});
+
+test("bare PTT trigger phrase is not evented", () => {
+  const pipeline = createPipeline(stubSink());
+  assert.deepEqual(pipeline("Hey VoiceOS."), []);
+  assert.deepEqual(pipeline("voice os"), []);
+  const normal = pipeline("the voice on the radio said to hold");
+  assert.equal(normal.length, 1); // only the exact trigger is suppressed
 });
 
 test("VoiceOS pre-classified kind bypasses the grammar", () => {

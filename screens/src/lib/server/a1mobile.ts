@@ -217,7 +217,10 @@ export async function coordinateHospitals(patient: CoordinationPatient, origin: 
   let pointed = false
 
   if (canCall) {
-    await a1Request("/numbers/point", { webhook_url: `${origin}/api/a1mobile/voice` })
+    const webhook = new URL("/api/a1mobile/voice", origin)
+    const relayToken = a1RelayToken()
+    if (relayToken) webhook.searchParams.set("relay", relayToken)
+    await a1Request("/numbers/point", { webhook_url: webhook.toString() })
     pointed = true
   }
 
@@ -322,6 +325,18 @@ export function verifyA1Signature(rawBody: string, signature: string | null): bo
       return timingSafeEqual(Buffer.from(expectedValue, "utf8"), Buffer.from(normalized, "utf8"))
     })
   })
+}
+
+export function a1RelayToken(): string | null {
+  const key = process.env.A1MOBILE_TEAM_KEY
+  if (!key) return null
+  return createHmac("sha256", key).update("medcrew-a1-relay-v1").digest("base64url")
+}
+
+export function verifyA1RelayToken(provided: string | null): boolean {
+  const expected = a1RelayToken()
+  if (!expected || !provided || expected.length !== provided.length) return false
+  return timingSafeEqual(Buffer.from(expected, "utf8"), Buffer.from(provided, "utf8"))
 }
 
 export function voiceTexml(actionUrl: string): string {

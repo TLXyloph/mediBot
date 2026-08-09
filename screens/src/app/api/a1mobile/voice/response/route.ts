@@ -1,5 +1,5 @@
 import { appendEvent } from "@/lib/server/convex"
-import { interpretHospitalSpeech, verifyA1Signature } from "@/lib/server/a1mobile"
+import { interpretHospitalSpeech, verifyA1RelayToken, verifyA1Signature } from "@/lib/server/a1mobile"
 
 export const maxDuration = 30
 
@@ -13,7 +13,11 @@ function followUpTexml(actionUrl: string, question: string): string {
 
 export async function POST(request: Request) {
   const raw = await request.text()
-  if (!verifyA1Signature(raw, request.headers.get("x-a1-signature"))) {
+  const requestUrl = new URL(request.url)
+  if (
+    !verifyA1Signature(raw, request.headers.get("x-a1-signature")) &&
+    !verifyA1RelayToken(requestUrl.searchParams.get("relay"))
+  ) {
     return new Response("Invalid relay signature", { status: 401 })
   }
   const type = request.headers.get("content-type") ?? ""
@@ -26,7 +30,7 @@ export async function POST(request: Request) {
     transcript = parsed.get("SpeechResult") ?? parsed.get("transcript") ?? ""
   }
   const result = await interpretHospitalSpeech(transcript)
-  const url = new URL(request.url)
+  const url = requestUrl
   const priorAvailable = url.searchParams.get("available")
   const available = result.available ?? (priorAvailable === "true" ? true : priorAvailable === "false" ? false : null)
   const needsAvailability = available === null

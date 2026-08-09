@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { anyApi } from "convex/server"
+import { AmbientScribe } from "@/components/AmbientScribe"
 import { AudioLines, Eye, Mic, Radio, ScanEye, Square, Video, VideoOff, Wifi } from "lucide-react"
 
 import { MedCrewHeader } from "@/components/MedCrewHeader"
@@ -264,6 +265,7 @@ export default function HomePage() {
               <div><input id="text-query" value={textQuery} onChange={(event) => setTextQuery(event.target.value)} placeholder="MedCrew, what are the latest vitals?" autoFocus /><button type="submit">Ask</button></div>
             </form>
           )}
+          <AmbientScribe />
         </aside>
       </div>
     </main>

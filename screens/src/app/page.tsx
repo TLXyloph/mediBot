@@ -1,12 +1,12 @@
 "use client"
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useQuery } from "convex/react"
+import { useMutation, useQuery } from "convex/react"
 import { anyApi } from "convex/server"
 import { AudioLines, Eye, Mic, Radio, ScanEye, Square, Video, VideoOff, Wifi } from "lucide-react"
 
 import { MedCrewHeader } from "@/components/MedCrewHeader"
-import { answerPatientQuestion, latestVitals } from "@/lib/clinical"
+import { answerFromPatientState, latestVitals, type PatientStateSummary } from "@/lib/clinical"
 import type { ConvexEvent } from "@/types/events"
 import styles from "./page.module.css"
 
@@ -39,6 +39,9 @@ export default function HomePage() {
   const queriedEvents = useQuery(anyApi.events.timeline, { limit: 250 }) as ConvexEvent[] | undefined
   const events = useMemo(() => queriedEvents ?? [], [queriedEvents])
   const vitals = useMemo(() => latestVitals(events), [events])
+  // Backend write path (append utterances) + canonical patient state for answers.
+  const appendUtterance = useMutation(anyApi.events.append)
+  const patient = useQuery(anyApi.patientState.patientState) as PatientStateSummary | undefined
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -66,19 +69,35 @@ export default function HomePage() {
   }, [])
 
   const speakAnswer = useCallback((rawQuestion: string) => {
-    const hasWakeWord = /\b(medcrew|scribe)\b/i.test(rawQuestion)
-    setQuestion(rawQuestion)
-    if (!hasWakeWord) {
-      setAnswer("Say “MedCrew” first so I know the question is for me.")
+    const trimmed = rawQuestion.trim()
+    if (!trimmed) return
+    // Addressed to the assistant → question/command; otherwise scene narration.
+    const addressed = /\b(medcrew|medibot|scribe)\b/i.test(trimmed)
+    setQuestion(trimmed)
+
+    // #1 — write the spoken line into the Convex event log so the backend pipeline
+    // actually runs on it. Questions carry `question` so the brain scribe skips
+    // them (no phantom clinical events); plain narration is left for the scribe.
+    void appendUtterance({
+      type: "utterance",
+      source: "voice",
+      role: "medic",
+      payload: addressed ? { text: trimmed, question: trimmed } : { text: trimmed },
+    }).catch(() => {})
+
+    if (!addressed) {
+      setAnswer("Added to the record. Say “MedCrew” to ask a question.")
       return
     }
-    const next = answerPatientQuestion(rawQuestion, events)
+
+    // #2 — answer from the brain's canonical patient state (single source of truth).
+    const next = answerFromPatientState(trimmed, patient, events)
     setAnswer(next)
     if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel()
       window.speechSynthesis.speak(new SpeechSynthesisUtterance(next))
     }
-  }, [events])
+  }, [appendUtterance, patient, events])
 
   const stopVision = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current)

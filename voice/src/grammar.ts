@@ -8,6 +8,7 @@
 // Misses stay plain utterances — lane B's scribe still extracts them ambiently.
 
 import { makeEvent, type MediBotEvent } from "./contract.js";
+import { cfg } from "./config.js";
 
 export type Command =
   | { kind: "correction"; text: string }
@@ -62,6 +63,10 @@ const WAKE_SKELETONS = ["mdbt", "mtbt"];
 
 function isWakeWord(w: string): boolean {
   const n = norm(w);
+  // Primary wake name (default "scribe"): a real word the ASR spells reliably,
+  // so exact-token match suffices (plural tolerated). "describe" ≠ "scribe".
+  if (n === cfg.wakeName || n === cfg.wakeName + "s") return true;
+  // Legacy fuzzy net for the old invented name "MediBot" and its manglings.
   if (n.length < 4 || n.length > 12) return false;
   if (WAKE_PREFIX.test(n)) return true;
   const sk = skeleton(n);

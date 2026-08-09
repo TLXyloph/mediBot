@@ -56,6 +56,9 @@ export const cfg = {
   micDevice: env.MIC_DEVICE ?? "default",
   cmdPort: num(env.CMD_PORT, 4750),
   idleFlushMs: num(env.IDLE_FLUSH_MS, 1500),
+  // Wake word must be common vocabulary — ASR mangles invented names
+  // ("MediBot" → Metabott/Merbau/Netbot, observed live). Exact-token matched.
+  wakeName: (env.WAKE_NAME ?? "scribe").toLowerCase().replace(/[^a-z]/g, ""),
   eventsLog: path.join(VOICE_DIR, ".data", "events.log"),
 };
 

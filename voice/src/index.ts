@@ -28,8 +28,17 @@ function alertText(e: AlertLike): string {
 
 console.log("[voice] MediBot Lane A — voice I/O");
 console.log(`[voice] sink: ${sink.label}`);
+const recentAlerts = new Map<string, number>();
 const unwatch = sink.watchAlerts((e) => {
   const text = alertText(e);
+  // Duplicate-storm guard: the safety agent has been observed emitting the
+  // same flag 4×; speak identical alert text at most once per 8s.
+  const last = recentAlerts.get(text) ?? 0;
+  if (Date.now() - last < 8000) {
+    console.log(`[voice] ALERT ${e.type}: duplicate suppressed ("${text.slice(0, 50)}")`);
+    return;
+  }
+  recentAlerts.set(text, Date.now());
   console.log(`[voice] ALERT ${e.type}: speaking "${text}"`);
   speaker.say(text);
 });

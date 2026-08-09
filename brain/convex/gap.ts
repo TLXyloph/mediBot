@@ -1,3 +1,4 @@
+import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
 import { makeFunctionReference } from "convex/server";
 import { insertAndRoute } from "./events";
@@ -17,10 +18,15 @@ const FIELD_PROMPTS: Record<string, string> = {
 
 // If the medic spoke within this window, treat them as mid-burst and defer.
 const QUIET_MS = 4000;
+// Hard cap on reschedules so a continuously-noisy scene can't spawn an unbounded
+// gap:check chain (~1 min of retries at QUIET_MS, then give up).
+const MAX_ATTEMPTS = 15;
 
 export const check = internalMutation({
-  args: {},
-  handler: async (ctx: any) => {
+  args: { attempt: v.optional(v.number()) },
+  handler: async (ctx: any, args: any) => {
+    const attempt = args.attempt ?? 1;
+    const canRetry = attempt < MAX_ATTEMPTS;
     // 1. Load the full log (ascending).
     const events: any[] = await ctx.db
       .query("events")
@@ -42,7 +48,11 @@ export const check = internalMutation({
       .reduce((max, e) => (e.ts > max ? e.ts : max), 0);
     if (Date.now() - lastUtteranceTs < QUIET_MS) {
       // Mid-sentence: reschedule and ask nothing now (never interrupt a burst).
-      await ctx.scheduler.runAfter(QUIET_MS, mut("gap:check"), {});
+      if (canRetry) {
+        await ctx.scheduler.runAfter(QUIET_MS, mut("gap:check"), {
+          attempt: attempt + 1,
+        });
+      }
       return;
     }
 
@@ -79,8 +89,10 @@ export const check = internalMutation({
 
     // 6. If more fields still need asking, reschedule so we ask the next one
     // later (still honoring the quiet heuristic on that run).
-    if (unasked.length > 1) {
-      await ctx.scheduler.runAfter(QUIET_MS, mut("gap:check"), {});
+    if (unasked.length > 1 && canRetry) {
+      await ctx.scheduler.runAfter(QUIET_MS, mut("gap:check"), {
+        attempt: attempt + 1,
+      });
     }
   },
 });

@@ -201,8 +201,7 @@ export function AmbientScribe() {
       {lastLine ? <small style={{ color: "var(--ink)" }}>Last: {lastLine}</small> : null}
       <small style={{ color: "var(--muted)" }}>
         Continuous charting — leave it on and just talk. Say “Scribe” or “MedCrew” for commands
-        (“Scribe, mark epi given” · “MedCrew, when was the last epi?”). One ambient listener at a
-        time: this or the MB1 terminal, never both.
+        (“Scribe, mark epi given” · “MedCrew, when was the last epi?”).
       </small>
     </section>
   )

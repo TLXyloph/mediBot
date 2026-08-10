@@ -82,9 +82,10 @@ export default function TryPage() {
           straight from the live patient state.
         </p>
         <p style={{ margin: "0.45rem 0", color: "var(--muted)", fontSize: "0.9rem" }}>
-          No install button in your build? Ask the VoiceOS crew here — it's their feature flag. If
-          the tool errors on launch, set the manifest's <code>command</code> to your absolute bun or
-          node path.
+          No extra macOS permissions needed — it's a plain MCP integration (no keyboard or screen
+          access). No install button in your build? Ask the VoiceOS crew here — it's their feature
+          flag. If the tool errors on launch, set the manifest's <code>command</code> to your
+          absolute bun or node path.
         </p>
       </section>
 

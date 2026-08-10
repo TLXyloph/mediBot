@@ -341,7 +341,7 @@ export function verifyA1RelayToken(provided: string | null): boolean {
 
 export function voiceTexml(actionUrl: string): string {
   const escaped = actionUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;")
-  return `<?xml version="1.0" encoding="UTF-8"?><Response><Gather input="speech" action="${escaped}" method="POST" speechTimeout="auto" timeout="12"><Say>This is MedCrew EMS coordination. We have a high acuity patient requiring cardiac capable emergency care. Are you available to receive this patient? Please answer yes or no, and include your estimated offload time.</Say></Gather><Say>No response was received. MedCrew will follow up.</Say></Response>`
+  return `<?xml version="1.0" encoding="UTF-8"?><Response><Gather input="speech" action="${escaped}" method="POST" language="en-US" speechTimeout="2" timeout="10"><Say voice="Polly.Joanna-Neural" language="en-US">Hello, this is MedCrew calling on behalf of an EMS team. We have a high acuity patient who needs cardiac capable emergency care. Are you available to receive this patient? Please say yes or no, and your estimated offload time.</Say></Gather><Say voice="Polly.Joanna-Neural" language="en-US">I did not hear a response. We will follow up later. Goodbye.</Say><Hangup/></Response>`
 }
 
 export interface HospitalSpeechResult {

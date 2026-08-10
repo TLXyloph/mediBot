@@ -8,7 +8,7 @@ function xmlEscape(value: string): string {
 }
 
 function followUpTexml(actionUrl: string, question: string): string {
-  return `<?xml version="1.0" encoding="UTF-8"?><Response><Gather input="speech" action="${xmlEscape(actionUrl)}" method="POST" speechTimeout="auto" timeout="12"><Say>${xmlEscape(question)}</Say></Gather><Say>No additional response was received. MedCrew will follow up.</Say></Response>`
+  return `<?xml version="1.0" encoding="UTF-8"?><Response><Gather input="speech" action="${xmlEscape(actionUrl)}" method="POST" language="en-US" speechTimeout="2" timeout="10"><Say voice="Polly.Joanna-Neural" language="en-US">${xmlEscape(question)}</Say></Gather><Say voice="Polly.Joanna-Neural" language="en-US">I did not hear an additional response. We will follow up later. Goodbye.</Say><Hangup/></Response>`
 }
 
 export async function POST(request: Request) {
@@ -28,6 +28,21 @@ export async function POST(request: Request) {
   } else {
     const parsed = new URLSearchParams(raw)
     transcript = parsed.get("SpeechResult") ?? parsed.get("transcript") ?? ""
+  }
+  if (!transcript.trim()) {
+    await appendEvent({
+      ts: Date.now(),
+      type: "sbar_update",
+      source: "agent",
+      role: "medic",
+      payload: { kind: "hospital_coordination", stage: "hospital_response_no_speech" },
+      conf: 0,
+      refs: [],
+    })
+    return new Response(
+      '<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Joanna-Neural" language="en-US">I did not hear a response. We will follow up later. Goodbye.</Say><Hangup/></Response>',
+      { status: 200, headers: { "content-type": "application/xml; charset=utf-8" } },
+    )
   }
   const result = await interpretHospitalSpeech(transcript)
   const url = requestUrl
@@ -73,7 +88,7 @@ export async function POST(request: Request) {
     })
   }
   return new Response(
-    `<?xml version="1.0" encoding="UTF-8"?><Response><Say>${available === true ? "Thank you. Your availability and offload estimate have been recorded for the medic." : "Thank you. Your capacity response has been recorded for the medic."}</Say><Hangup/></Response>`,
+    `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Joanna-Neural" language="en-US">${available === true ? "Thank you. Your availability and offload estimate have been recorded for the medic. Goodbye." : "Thank you. Your capacity response has been recorded for the medic. Goodbye."}</Say><Hangup/></Response>`,
     { status: 200, headers: { "content-type": "application/xml; charset=utf-8" } },
   )
 }

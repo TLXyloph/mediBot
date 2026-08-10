@@ -53,7 +53,7 @@ export default function HomePage() {
   const [visionActive, setVisionActive] = useState(false)
   const [visionStatus, setVisionStatus] = useState("Ready to read the monitor")
   const [listening, setListening] = useState(false)
-  const [question, setQuestion] = useState("MedCrew, when was the last epi?")
+  const [question, setQuestion] = useState("MedCrew, when was the last epinephrine?")
   const [answer, setAnswer] = useState("I’ll check the verified patient state first, then answer out loud.")
   const [showTextQuery, setShowTextQuery] = useState(false)
   const [textQuery, setTextQuery] = useState("")

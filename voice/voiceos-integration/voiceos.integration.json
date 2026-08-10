@@ -30,7 +30,7 @@
     {
       "name": "medibot_mark",
       "title": "Mark an event time",
-      "description": "Call when the user asks Scribe (also answers to MediBot) to mark, log, or timestamp a clinical moment, e.g. 'Scribe, mark epi given', 'mark time of arrest', 'mark ROSC'. Stamps the event on the patient timeline at the current time.",
+      "description": "Call when the user asks Scribe (also answers to MediBot) to mark, log, or timestamp a clinical moment, e.g. 'Scribe, mark epinephrine given', 'mark time of arrest', 'mark ROSC'. Stamps the event on the patient timeline at the current time.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -45,7 +45,7 @@
     {
       "name": "medibot_ask",
       "title": "Ask MediBot about the patient",
-      "description": "Call when the user asks Scribe (also answers to MediBot) a question about the patient, medications, vitals, or incident timeline, e.g. 'Scribe, when was the last epi?', 'MediBot, what's the latest blood pressure?'. The question is logged and MediBot answers out loud.",
+      "description": "Call when the user asks Scribe (also answers to MediBot) a question about the patient, medications, vitals, or incident timeline, e.g. 'Scribe, when was the last epinephrine?', 'MediBot, what's the latest blood pressure?'. The question is logged and MediBot answers out loud.",
       "inputSchema": {
         "type": "object",
         "properties": {

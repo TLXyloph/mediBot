@@ -81,7 +81,7 @@ ePCR, SBAR, and both dashboards are derived views over this log. Agents read the
 - **R8 — Non-destructive corrections.** "Correction — BP 90 over 60" appends a `correction` event; UI shows amended value with audit trail; original event still queryable.
 - **R9 — Hospital reactivity.** Event appended on MB1 renders on MB2's hospital view in **< 2s** (Convex reactive query, no polling).
 - **R10 — Vision vitals.** Simulated monitor value change → `vital` event in **< 5s** (`report_vitals` tool call from the Live session).
-- **R11 — Spoken Q&A.** "MediBot, when was the last epi?" → audible answer begins in **< 2.5s**, content sourced from `query_patient_state`.
+- **R11 — Spoken Q&A.** "MediBot, when was the last epinephrine?" → audible answer begins in **< 2.5s**, content sourced from `query_patient_state`.
 - **R12 — Voice-only control.** Corrections, queries, and time-marks are all VoiceOS-spoken commands. **Verification:** demo run uses no keyboard after app launch.
 - **R13 — Demo readiness.** Two consecutive clean 60s runs before 5:30; backup video recorded by 5:15.
 
@@ -136,7 +136,7 @@ ePCR, SBAR, and both dashboards are derived views over this log. Agents read the
 2. Setup: `cd eyes && cp .env.example .env`, fill `GEMINI_API_KEY` (team key) + `CONVEX_URL` (same value screens/ uses). Leave the commented overrides commented. `npm run dev`, then `curl localhost:3000/api/health` → expect `geminiConfigured:true, convexConfigured:true, convexMode:"live"`.
 3. Monitor: open `http://<MB3-ip>:3000/monitor` on the Samsung (values cycle every 15s). Prop the webcam on it, tape the positions.
 4. **R10 check:** live page running, camera on the monitor → within **5s** of an on-screen value change, four `vital` events (`source: vision`) land in Convex. Verify via the Convex dashboard data page, or from any checkout: `cd voice && npm install && printf 'CONVEX_URL=<url>\n' > .env && npm run tail -- 5` (the tail reader needs only the URL, no Gemini key).
-5. **R11 check:** say **"Scribe, when was the last epi?"** at MB3's mic → spoken answer starts < 2.5s. (Answer content is test-junk until the pre-rehearsal log reset — verify mechanics now, content later.) Unaddressed room talk must stay silent.
+5. **R11 check:** say **"Scribe, when was the last epinephrine?"** at MB3's mic → spoken answer starts < 2.5s. (Answer content is test-junk until the pre-rehearsal log reset — verify mechanics now, content later.) Unaddressed room talk must stay silent.
 6. Fallback: **Force fallback** button → vitals keep flowing via the 3s poll (R10 insurance).
 7. **Two-session soak (coordinate with lane A):** once your Live session is stable, say so in chat — MB1 runs the ears session alongside for 5 min; both sides watch for reconnect churn (the one-key concentration risk). Report churn or clean.
 8. Report in chat: R10 latency, R11 latency, any session drops. Your `DEMO_RUNBOOK.md` spoken cues were already renamed to "Scribe".
@@ -150,7 +150,7 @@ ePCR, SBAR, and both dashboards are derived views over this log. Agents read the
 1. 0–15s — ambient scene; patient: "chest hurts… I take warfarin" → chart fills itself, role-attributed.
 2. 15–25s — gesture at camera rig: vitals have been logging themselves off the monitor the whole time.
 3. 25–35s — "giving aspirin" → safety agent interrupts aloud (warfarin + GI-bleed).
-4. 35–45s — "Scribe, when was the last epi?" → Gemini Live answers by voice. (Wake word renamed from MediBot — ASR reliability; see Constraints.)
+4. 35–45s — "Scribe, when was the last epinephrine?" → Gemini Live answers by voice. (Wake word renamed from MediBot — ASR reliability; see Constraints.)
 5. 45–60s — reveal MB2: SBAR already waiting, vitals trending. Close.
 (Voice-correction beat lives in the backup video only.)
 

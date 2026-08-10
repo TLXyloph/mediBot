@@ -131,7 +131,9 @@ export class WakeWordAudioGate {
 
   observeTranscript(text: string): boolean {
     this.transcript = `${this.transcript} ${text}`.trim();
-    if (/\bmedi\s*bot\b/i.test(this.transcript)) {
+    // Wake word is "Scribe" (ASR spells real words; "MediBot" → Metabott/Merbau,
+    // so the legacy pattern alone silently discarded every answer).
+    if (/\bscribe(?:s|r)?\b|\bmedi\s*bot\b/i.test(this.transcript)) {
       this.addressed = true;
       for (const chunk of this.bufferedAudio) this.speaker.enqueue(chunk);
       this.bufferedAudio = [];

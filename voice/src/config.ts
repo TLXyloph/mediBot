@@ -59,6 +59,9 @@ export const cfg = {
   // Wake word must be common vocabulary — ASR mangles invented names
   // ("MediBot" → Metabott/Merbau/Netbot, observed live). Exact-token matched.
   wakeName: (env.WAKE_NAME ?? "scribe").toLowerCase().replace(/[^a-z]/g, ""),
+  // "Hey VoiceOS" → programmatic Option+Control hold (VoiceOS agent PTT).
+  voiceosPttEnabled: env.VOICEOS_PTT !== "0",
+  voiceosPttHoldMs: num(env.VOICEOS_PTT_HOLD_MS, 6000),
   eventsLog: path.join(VOICE_DIR, ".data", "events.log"),
 };
 

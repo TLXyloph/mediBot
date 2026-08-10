@@ -1,36 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MedCrew screens
 
-## Getting Started
+Responsive field UI, verified ePCR, receiving-hospital view, monitor simulator, and A1mobile hospital coordination in one Next.js app.
 
-First, run the development server:
+## Routes
+
+- `/` — responsive ambient monitor vision and wake-word patient Q&A
+- `/medic` — reactive Convex ePCR, completeness, provenance, and append-only timeline
+- `/hospital` — reactive SBAR, vitals trend, interventions, and safety flags
+- `/coordinate` — receiving requirements, A1mobile calls, hospital ranking, medic confirmation, and live handoff
+- `/monitor` — full-screen monitor scenario that changes every 15 seconds
+
+## Local setup
 
 ```bash
+cp .env.example .env.local
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Keep `GEMINI_API_KEY` and `A1MOBILE_TEAM_KEY` server-only. `NEXT_PUBLIC_CONVEX_URL` is the only browser-exposed deployment value. Real A1mobile calls require all of the following:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. `A1MOBILE_ALLOW_REAL_CALLS=true`
+2. OTP-verified destination numbers in `A1MOBILE_ALLOWED_NUMBERS`
+3. the corresponding hospital phone environment variable
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Without those explicit settings, `/coordinate` remains fully interactive using the documented mock hospital states and never places a call.
 
-## Learn More
+## Verification
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm test -- --runInBand
+npm run lint
+npx tsc --noEmit
+npm run build
+```

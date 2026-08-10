@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f3eadc" />
+    <title>MedCrew · Mobile</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --sand: #f3eadc;
+        --paper: #fff9f1;
+        --ink: #241d18;
+        --muted: #756a61;
+        --soft: #ddd1c3;
+        --orange: #ff4f00;
+        --orange-soft: #ffd9c4;
+        --green: #177a4e;
+        --camera: #1e1916;
+        font-family: "Google Sans", "Inter", "Avenir Next", ui-sans-serif, system-ui, -apple-system,
+          BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-synthesis: none;
+      }
+
+      * { box-sizing: border-box; }
+
+      html {
+        min-height: 100%;
+        background: var(--sand);
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        color: var(--ink);
+        background: var(--sand);
+      }
+
+      button, a { font: inherit; }
+      button { color: inherit; }
+
+      .app {
+        width: min(100%, 480px);
+        min-height: 100vh;
+        margin: 0 auto;
+        padding: max(20px, env(safe-area-inset-top)) 22px calc(124px + env(safe-area-inset-bottom));
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .brand img {
+        width: 48px;
+        height: 48px;
+        object-fit: contain;
+        flex: 0 0 auto;
+      }
+
+      .brand-copy strong {
+        display: block;
+        font-size: 18px;
+        line-height: 1.1;
+        letter-spacing: -0.025em;
+      }
+
+      .brand-copy span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .live-state {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 12px;
+        border: 0;
+        border-radius: 999px;
+        background: var(--paper);
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .live-state i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--green);
+      }
+
+      .intro {
+        padding: 52px 0 30px;
+      }
+
+      .intro p {
+        margin: 0 0 14px;
+        color: var(--orange);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .intro h1 {
+        max-width: 420px;
+        margin: 0;
+        font-size: clamp(40px, 11vw, 52px);
+        font-weight: 560;
+        line-height: 1.03;
+        letter-spacing: -0.055em;
+      }
+
+      .intro h1 em {
+        color: var(--orange);
+        font-style: normal;
+      }
+
+      .intro .subcopy {
+        max-width: 390px;
+        margin: 20px 0 0;
+        color: var(--muted);
+        font-size: 17px;
+        line-height: 1.65;
+        letter-spacing: -0.012em;
+      }
+
+      .camera {
+        position: relative;
+        min-height: 256px;
+        overflow: hidden;
+        border-radius: 30px;
+        background: var(--camera);
+        color: #fffaf3;
+      }
+
+      .camera::before,
+      .camera::after {
+        position: absolute;
+        content: "";
+        width: 34px;
+        height: 34px;
+        pointer-events: none;
+      }
+
+      .camera::before {
+        top: 68px;
+        left: 24px;
+        border-top: 2px solid var(--orange);
+        border-left: 2px solid var(--orange);
+        border-radius: 10px 0 0;
+      }
+
+      .camera::after {
+        right: 24px;
+        bottom: 68px;
+        border-right: 2px solid var(--orange);
+        border-bottom: 2px solid var(--orange);
+        border-radius: 0 0 10px;
+      }
+
+      .camera-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 22px 24px 0;
+        font-size: 13px;
+      }
+
+      .camera-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #d9cdc4;
+        font-weight: 650;
+      }
+
+      .camera-label svg { color: var(--orange); }
+
+      .camera time {
+        color: #aa9e96;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .camera-center {
+        display: grid;
+        place-items: center;
+        padding: 52px 24px 32px;
+        text-align: center;
+      }
+
+      .camera-center .eye-ring {
+        display: grid;
+        width: 78px;
+        height: 52px;
+        place-items: center;
+        border: 2px solid var(--orange);
+        border-radius: 50%;
+        color: var(--orange);
+      }
+
+      .camera-center strong {
+        margin-top: 22px;
+        font-size: 20px;
+        letter-spacing: -0.025em;
+      }
+
+      .camera-center span {
+        margin-top: 7px;
+        color: #ad9f96;
+        font-size: 15px;
+      }
+
+      .vitals {
+        padding: 38px 2px 10px;
+      }
+
+      .section-title {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .section-title h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 620;
+        letter-spacing: -0.035em;
+      }
+
+      .section-title span {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .vital-values {
+        display: grid;
+        grid-template-columns: 0.8fr 0.9fr 1.35fr;
+        gap: 20px;
+        padding-top: 24px;
+      }
+
+      .vital-values div { min-width: 0; }
+
+      .vital-values span,
+      .voice-prompt small {
+        display: block;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 650;
+        letter-spacing: 0.03em;
+      }
+
+      .vital-values strong {
+        display: block;
+        margin-top: 7px;
+        font-size: clamp(30px, 8vw, 40px);
+        font-weight: 570;
+        line-height: 1;
+        letter-spacing: -0.06em;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .vital-values .bp strong { color: var(--orange); }
+
+      .vital-values small {
+        display: block;
+        margin-top: 7px;
+        color: #988b81;
+        font-size: 12px;
+      }
+
+      .voice-prompt {
+        padding: 48px 2px 18px;
+      }
+
+      .voice-prompt .prompt-line {
+        display: grid;
+        grid-template-columns: 48px minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+        margin-top: 17px;
+      }
+
+      .prompt-icon {
+        display: grid;
+        width: 48px;
+        height: 48px;
+        place-items: center;
+        border-radius: 50%;
+        color: var(--orange);
+        background: var(--orange-soft);
+      }
+
+      .prompt-copy strong {
+        display: block;
+        font-size: 19px;
+        font-weight: 570;
+        line-height: 1.35;
+        letter-spacing: -0.025em;
+      }
+
+      .prompt-copy p {
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.5;
+      }
+
+      .bottom-action {
+        position: fixed;
+        z-index: 10;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        padding: 12px 18px max(14px, env(safe-area-inset-bottom));
+        pointer-events: none;
+      }
+
+      .action-inner {
+        display: flex;
+        width: min(100%, 448px);
+        min-height: 76px;
+        margin: 0 auto;
+        padding: 10px 12px 10px 18px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        border-radius: 25px;
+        background: var(--paper);
+        box-shadow: 0 12px 34px rgba(52, 38, 27, 0.14);
+        pointer-events: auto;
+      }
+
+      .action-status {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        min-width: 0;
+      }
+
+      .action-status > svg { color: var(--orange); }
+
+      .action-status small {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .action-status strong {
+        display: block;
+        margin-top: 2px;
+        font-size: 16px;
+        letter-spacing: -0.02em;
+      }
+
+      .talk-button {
+        display: grid;
+        width: 56px;
+        height: 56px;
+        flex: 0 0 auto;
+        place-items: center;
+        border: 0;
+        border-radius: 50%;
+        color: white;
+        background: var(--orange);
+        cursor: pointer;
+        transition: transform 160ms ease, background-color 160ms ease;
+      }
+
+      .talk-button:active { transform: scale(0.94); }
+
+      body[data-listening="true"] .talk-button {
+        color: var(--orange);
+        background: var(--orange-soft);
+      }
+
+      body[data-listening="true"] .action-status strong::after { content: "Listening…"; }
+      body[data-listening="true"] .action-status strong span { display: none; }
+
+      .toast {
+        position: fixed;
+        z-index: 20;
+        top: calc(18px + env(safe-area-inset-top));
+        left: 50%;
+        width: max-content;
+        max-width: calc(100% - 40px);
+        padding: 11px 16px;
+        border-radius: 999px;
+        color: white;
+        background: var(--ink);
+        font-size: 14px;
+        opacity: 0;
+        transform: translate(-50%, -14px);
+        transition: opacity 180ms ease, transform 180ms ease;
+        pointer-events: none;
+      }
+
+      .toast.is-visible {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+
+      @media (min-width: 600px) {
+        body { padding: 24px 0; }
+        .app { min-height: calc(100vh - 48px); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+      }
+    </style>
+  </head>
+  <body data-listening="false">
+    <main class="app">
+      <header class="topbar">
+        <div class="brand">
+          <img src="/medcrew-logo.png" alt="MedCrew eye and heartbeat logo" />
+          <div class="brand-copy">
+            <strong>MedCrew</strong>
+            <span>Ambient monitor</span>
+          </div>
+        </div>
+        <button class="live-state" id="mode-button" type="button" aria-label="Switch vision mode">
+          <i aria-hidden="true"></i>
+          <span id="mode-label">Live</span>
+        </button>
+      </header>
+
+      <section class="intro" aria-labelledby="page-title">
+        <p>Vision is active</p>
+        <h1 id="page-title">Keep moving.<br /><em>I’m watching.</em></h1>
+        <div class="subcopy">Vitals are read from the patient monitor and logged as the scene changes.</div>
+      </section>
+
+      <section class="camera" aria-label="Monitor camera preview">
+        <div class="camera-head">
+          <span class="camera-label"><i data-lucide="scan-eye" size="18"></i> Monitor camera</span>
+          <time id="clock">--:--:--</time>
+        </div>
+        <div class="camera-center">
+          <span class="eye-ring"><i data-lucide="eye" size="31" stroke-width="1.8"></i></span>
+          <strong>Reading all four values</strong>
+          <span>Last clear frame · just now</span>
+        </div>
+      </section>
+
+      <section class="vitals" aria-labelledby="vitals-title">
+        <div class="section-title">
+          <h2 id="vitals-title">Latest vitals</h2>
+          <span>Synced to Convex</span>
+        </div>
+        <div class="vital-values">
+          <div>
+            <span>HR</span>
+            <strong>88</strong>
+            <small>bpm</small>
+          </div>
+          <div>
+            <span>SpO₂</span>
+            <strong>97</strong>
+            <small>percent</small>
+          </div>
+          <div class="bp">
+            <span>Blood pressure</span>
+            <strong>118/76</strong>
+            <small>mmHg</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="voice-prompt" aria-labelledby="voice-title">
+        <div class="section-title">
+          <h2 id="voice-title">Ask without stopping</h2>
+        </div>
+        <div class="prompt-line">
+          <span class="prompt-icon"><i data-lucide="audio-lines" size="23"></i></span>
+          <div class="prompt-copy">
+            <strong>“MedCrew, when was the last epi?”</strong>
+            <p>I’ll check the patient state first, then answer out loud.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="bottom-action">
+      <div class="action-inner">
+        <div class="action-status">
+          <i data-lucide="radio" size="23"></i>
+          <div>
+            <small>Wake word ready</small>
+            <strong><span>Tap to speak</span></strong>
+          </div>
+        </div>
+        <button class="talk-button" id="talk-button" type="button" aria-label="Start voice query">
+          <i data-lucide="mic" size="24"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite">Fallback vision enabled</div>
+
+    <script src="https://unpkg.com/lucide@1.31.0/dist/umd/lucide.js"></script>
+    <script>
+      const clock = document.querySelector("#clock");
+      const talkButton = document.querySelector("#talk-button");
+      const modeButton = document.querySelector("#mode-button");
+      const modeLabel = document.querySelector("#mode-label");
+      const toast = document.querySelector("#toast");
+      let fallback = false;
+      let toastTimer;
+
+      function updateClock() {
+        clock.textContent = new Intl.DateTimeFormat("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }).format(new Date());
+      }
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add("is-visible");
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => toast.classList.remove("is-visible"), 1800);
+      }
+
+      talkButton.addEventListener("click", () => {
+        const listening = document.body.dataset.listening !== "true";
+        document.body.dataset.listening = String(listening);
+        talkButton.setAttribute("aria-label", listening ? "Stop voice query" : "Start voice query");
+        talkButton.innerHTML = listening
+          ? '<i data-lucide="square" size="20"></i>'
+          : '<i data-lucide="mic" size="24"></i>';
+        window.lucide.createIcons();
+      });
+
+      modeButton.addEventListener("click", () => {
+        fallback = !fallback;
+        modeLabel.textContent = fallback ? "Fallback" : "Live";
+        showToast(fallback ? "Fallback vision enabled" : "Gemini Live restored");
+      });
+
+      updateClock();
+      window.setInterval(updateClock, 1000);
+      window.lucide.createIcons();
+    </script>
+  </body>
+</html>

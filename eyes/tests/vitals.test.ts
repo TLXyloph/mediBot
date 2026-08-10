@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { VitalPublisher, toVitalEvent, validateVitals } from "../server/vitals.js";
+import { VitalPublisher, toVitalEvents, validateVitals } from "../server/vitals.js";
 import type { EventSink } from "../server/vitals.js";
 
 const reading = {
@@ -24,22 +24,19 @@ describe("validateVitals", () => {
   });
 });
 
-describe("toVitalEvent", () => {
-  it("maps readings to the shared append-only event contract", () => {
-    expect(toVitalEvent(reading, 1234)).toEqual({
-      ts: 1234,
-      type: "vital",
-      source: "vision",
-      role: "medic",
-      payload: {
-        hrBpm: 88,
-        spo2Pct: 97,
-        systolicMmHg: 118,
-        diastolicMmHg: 76,
-      },
-      conf: 0.94,
-      refs: [],
-    });
+describe("toVitalEvents", () => {
+  it("maps a reading to per-vital {name,value} events sharing one ts", () => {
+    const events = toVitalEvents(reading, 1234);
+    expect(events).toHaveLength(4);
+    expect(events.map((e) => e.payload)).toEqual([
+      { name: "hr", value: 88 },
+      { name: "spo2", value: 97 },
+      { name: "sbp", value: 118 },
+      { name: "dbp", value: 76 },
+    ]);
+    for (const e of events) {
+      expect(e).toMatchObject({ ts: 1234, type: "vital", source: "vision", role: "medic", conf: 0.94, refs: [] });
+    }
   });
 });
 
@@ -58,7 +55,8 @@ describe("VitalPublisher", () => {
       accepted: true,
       duplicate: false,
     });
-    expect(appendVital).toHaveBeenCalledTimes(2);
+    // 4 per-vital events per accepted reading × 2 accepted publishes
+    expect(appendVital).toHaveBeenCalledTimes(8);
   });
 
   it("does not suppress a retry after an append failure", async () => {
@@ -70,6 +68,7 @@ describe("VitalPublisher", () => {
 
     await expect(publisher.publish(reading)).rejects.toThrow("offline");
     await expect(publisher.publish(reading)).resolves.toMatchObject({ eventId: "event-2" });
-    expect(appendVital).toHaveBeenCalledTimes(2);
+    // 1 failed append, then 4 successful per-vital appends on retry
+    expect(appendVital).toHaveBeenCalledTimes(5);
   });
 });

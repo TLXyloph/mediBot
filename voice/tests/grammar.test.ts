@@ -1,6 +1,44 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseCommand, commandToEvents } from "../src/grammar.js";
+import { parseCommand, commandToEvents, extractEmbedded } from "../src/grammar.js";
+
+// ---- observed live in self-testing, round 2 (Scribe era) ----
+
+test("ASR 'Scriber, when was the last epinephrine?' → question (suffix tolerance)", () => {
+  assert.deepEqual(parseCommand("Scriber, when was the last epinephrine?"), {
+    kind: "question",
+    text: "when was the last epinephrine?",
+  });
+});
+
+test("ASR 'Describe the mark-recapture given.' → mark (hyphen split + window)", () => {
+  assert.deepEqual(parseCommand("Describe the mark-recapture given."), {
+    kind: "mark",
+    text: "recapture given",
+  });
+});
+
+test("fused: scene + correction splits into head and command", () => {
+  const r = extractEmbedded("He's still complaining of chest pain. Correction, BP 90 over 60.");
+  assert.ok(r);
+  assert.equal(r.head, "He's still complaining of chest pain.");
+  assert.deepEqual(r.cmd, { kind: "correction", text: "BP 90 over 60" });
+});
+
+test("fused: scene + wake command splits into head and command", () => {
+  const r = extractEmbedded("Pushing the epinephrine now. Scribe mark epinephrine given.");
+  assert.ok(r);
+  assert.equal(r.head, "Pushing the epinephrine now.");
+  assert.deepEqual(r.cmd, { kind: "mark", text: "epinephrine given" });
+});
+
+test("no false split: 'the scribe noted it' has no strict command tail", () => {
+  assert.equal(extractEmbedded("the scribe noted it"), null);
+});
+
+test("no false split on plain scene speech", () => {
+  assert.equal(extractEmbedded("patient says his chest hurts and he takes warfarin"), null);
+});
 import { makeEvent } from "../src/contract.js";
 
 test("unattributed events omit role entirely (brain validator rejects null)", () => {

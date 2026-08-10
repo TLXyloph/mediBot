@@ -63,9 +63,9 @@ const WAKE_SKELETONS = ["mdbt", "mtbt"];
 
 function isWakeWord(w: string): boolean {
   const n = norm(w);
-  // Primary wake name (default "scribe"): a real word the ASR spells reliably,
-  // so exact-token match suffices (plural tolerated). "describe" ≠ "scribe".
-  if (n === cfg.wakeName || n === cfg.wakeName + "s") return true;
+  // Primary wake name (default "scribe"): a real word the ASR spells reliably.
+  // Short-suffix tolerance covers "Scribes"/"Scriber" (observed live).
+  if (n.startsWith(cfg.wakeName) && n.length <= cfg.wakeName.length + 2) return true;
   // Legacy fuzzy net for the old invented name "MediBot" and its manglings.
   if (n.length < 4 || n.length > 12) return false;
   if (WAKE_PREFIX.test(n)) return true;
@@ -107,6 +107,9 @@ function stripFillers(s: string): string {
   return out;
 }
 
+// ASR hyphenates freely ("mark-recapture given") — treat hyphens as spaces.
+const tokenize = (s: string): string[] => s.split(/[\s\-–—]+/).filter(Boolean);
+
 /** Classify what follows the wake word (real or assumed). */
 function afterWake(rest: string): Command | null {
   const text = cleanTail(stripFillers(rest));
@@ -116,7 +119,7 @@ function afterWake(rest: string): Command | null {
     const t = cleanTail(corr[1]);
     return t ? { kind: "correction", text: t } : { kind: "wake", text: "" };
   }
-  const tokens = text.split(/\s+/);
+  const tokens = tokenize(text);
   if (isMarkVerb(tokens[0])) {
     const t = cleanTail(tokens.slice(1).join(" "));
     return t ? { kind: "mark", text: t } : { kind: "wake", text: "" };
@@ -138,7 +141,7 @@ export function parseCommand(raw: string, opts: { assumeWake?: boolean } = {}): 
     return t ? { kind: "correction", text: t } : null;
   }
 
-  const tokens = text.split(/\s+/);
+  const tokens = tokenize(text);
   const consumed = wakeTokens(tokens);
   if (consumed > 0) return afterWake(tokens.slice(consumed).join(" "));
 
@@ -152,12 +155,40 @@ export function parseCommand(raw: string, opts: { assumeWake?: boolean } = {}): 
 
   // Last-chance recovery: wake word mangled beyond recognition but "mark" sits
   // in the first few tokens with an administration tail — observed as
-  // "Never bought Mark Ecko given." / "That a boy, Mark. Epinephrine given."
+  // "Never bought Mark Ecko given." / "Describe the mark-recapture given."
   for (let i = 1; i <= 3 && i < tokens.length; i++) {
     if (isMarkVerb(tokens[i])) {
       const t = cleanTail(tokens.slice(i + 1).join(" "));
       if (t && GIVENISH.test(t)) return { kind: "mark", text: t };
       break;
+    }
+  }
+  return null;
+}
+
+/** Strict acceptance for recovered commands: no default-question fallthrough. */
+function strictAccept(cmd: Command | null): cmd is Command {
+  if (!cmd) return false;
+  if (cmd.kind === "correction" || cmd.kind === "mark") return true;
+  return cmd.kind === "question" && QUESTION_START.test(cmd.text);
+}
+
+/**
+ * Mid-utterance command extraction: ASR fuses scene speech and command into one
+ * segment ("He's still complaining of chest pain. Correction, BP 90 over 60.").
+ * Finds the LAST wake/"correction" token whose tail parses as a strict command;
+ * the head stays a normal utterance.
+ */
+export function extractEmbedded(raw: string): { head: string; cmd: Command; tail: string } | null {
+  const tokens = raw.trim().split(/\s+/);
+  for (let i = tokens.length - 1; i >= 1; i--) {
+    const n = norm(tokens[i]);
+    if (n !== "correction" && !isWakeWord(tokens[i])) continue;
+    const tail = tokens.slice(i).join(" ");
+    const cmd = parseCommand(tail);
+    if (cmd && cmd.kind !== "wake" && strictAccept(cmd)) {
+      const head = tokens.slice(0, i).join(" ").replace(/[,;:]+$/, "").trim();
+      if (head.length >= 2) return { head, cmd, tail };
     }
   }
   return null;

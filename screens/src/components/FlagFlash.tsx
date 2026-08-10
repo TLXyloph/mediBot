@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { TriangleAlert } from "lucide-react"
 import type { ConvexEvent } from "@/types/events"
+import styles from "./FlagFlash.module.css"
 
 export function FlagFlash({ flags }: { flags: ConvexEvent[] }) {
   const [visible, setVisible] = useState(false)
@@ -21,22 +23,20 @@ export function FlagFlash({ flags }: { flags: ConvexEvent[] }) {
 
   return (
     <>
-      {/* Full-screen red overlay */}
       {visible && (
-        <div className="fixed inset-0 bg-red-600/40 pointer-events-none z-40 animate-pulse" />
+        <div className={styles.flash} />
       )}
-      {/* Persistent flag banner (shows latest flag, stays until cleared) */}
       {latestFlag && (
-        <div className="bg-red-900 border border-red-600 rounded-xl p-4 flex items-start gap-3">
-          <span className="text-red-400 text-2xl">⚠</span>
+        <div className={styles.alert}>
+          <TriangleAlert size={23} />
           <div>
-            <p className="text-sm font-bold uppercase text-red-400 tracking-widest mb-1">Safety Alert</p>
-            <p className="text-xl text-white">
+            <p className={styles.label}>Safety alert</p>
+            <p className={styles.message}>
               {String(latestFlag.payload.message ?? latestFlag.payload.reason ?? latestFlag.payload.text ?? "")}
             </p>
-            <p className="text-sm text-red-400 mt-1">
+            <time>
               {new Date(latestFlag.ts).toLocaleTimeString()}
-            </p>
+            </time>
           </div>
         </div>
       )}

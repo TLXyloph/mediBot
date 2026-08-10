@@ -92,7 +92,9 @@ export const rhythmCheck = internalMutation({
   handler: async (ctx: any, args) => {
     // Halt if this run was stopped or superseded by a newer start.
     const active = await activeRunId(ctx);
-    if (active === null || (args.runId != null && active !== args.runId)) return;
+    // Strict match: a tick without a runId (legacy/foreign) must never fire
+    // against the current run — loose null-tolerance broke R6's ±2s guarantee.
+    if (active === null || args.runId !== active) return;
 
     const n = args.n ?? 1;
     const rhythmIntervalMs = intervalMs(RHYTHM_BASE_SECONDS);
@@ -127,7 +129,9 @@ export const epi = internalMutation({
   handler: async (ctx: any, args) => {
     // Halt if this run was stopped or superseded by a newer start.
     const active = await activeRunId(ctx);
-    if (active === null || (args.runId != null && active !== args.runId)) return;
+    // Strict match: a tick without a runId (legacy/foreign) must never fire
+    // against the current run — loose null-tolerance broke R6's ±2s guarantee.
+    if (active === null || args.runId !== active) return;
 
     const n = args.n ?? 1;
     const epiIntervalMs = intervalMs(EPI_BASE_SECONDS);

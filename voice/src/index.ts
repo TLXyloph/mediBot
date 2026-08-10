@@ -12,6 +12,7 @@ import { Ears } from "./ears.js";
 import { Mic } from "./mic.js";
 import { createPipeline } from "./pipeline.js";
 import { startCommandServer } from "./command-server.js";
+import { VoiceOSPtt } from "./voiceos-ptt.js";
 
 const fake = process.argv.includes("--fake");
 
@@ -46,7 +47,22 @@ console.log(`[voice] alerts: flag+timer → TTS (${cfg.ttsEngine === "say" ? "ma
 speaker.prewarm(["Protocol timer due.", "Safety flag raised."]);
 
 const pipeline = createPipeline(sink);
-const server = startCommandServer(pipeline, sink, speaker);
+
+// Ears duck when MediBot's own TTS speaks AND for a window after each
+// VoiceOS-routed command (its agent voice replies aloud — without this, ears
+// transcribes the reply into the chart as an utterance).
+let externalDuckUntil = 0;
+function applyDuck(): void {
+  if (mic) mic.ducked = speaker.speaking || Date.now() < externalDuckUntil;
+}
+function duckForVoiceOSReply(): void {
+  externalDuckUntil = Date.now() + 7000;
+  applyDuck();
+  ears?.notifyDucked();
+  setTimeout(applyDuck, 7100).unref?.();
+}
+
+const server = startCommandServer(pipeline, sink, speaker, duckForVoiceOSReply);
 
 let ears: Ears | null = null;
 let mic: Mic | null = null;
@@ -70,14 +86,23 @@ if (fake) {
     pipeline(text, { speaker: meta.speaker });
   }, cfg.idleFlushMs);
 
+  const ptt = new VoiceOSPtt();
+  void ptt.prepare();
+  if (cfg.voiceosPttEnabled) {
+    console.log('[voice] VoiceOS PTT: say "Hey VoiceOS", pause, then the command (VOICEOS_PTT=0 to disable)');
+  }
+
   ears = new Ears(
-    (chunk, meta) => segmenter.push(chunk, meta),
+    (chunk, meta) => {
+      segmenter.push(chunk, meta);
+      ptt.observeChunk(chunk); // chunk-level: the hold must start before the command
+    },
     () => segmenter.boundary(),
   );
   mic = new Mic((pcm) => ears?.sendAudio(pcm));
 
   speaker.onSpeakingChange = (speaking) => {
-    if (mic) mic.ducked = speaking; // half-duplex: never transcribe our own TTS
+    applyDuck(); // half-duplex: never transcribe our own TTS
     if (speaking) ears?.notifyDucked();
   };
 

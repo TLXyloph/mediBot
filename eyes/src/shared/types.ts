@@ -13,11 +13,11 @@ export interface VitalEvent {
   type: "vital";
   source: "vision";
   role: "medic";
+  // Contract shape (brain/README.md): one event per vital.
+  // name ∈ hr | spo2 | sbp | dbp — screens/ merges same-ts events into a reading.
   payload: {
-    hrBpm: number;
-    spo2Pct: number;
-    systolicMmHg: number;
-    diastolicMmHg: number;
+    name: string;
+    value: number;
   };
   conf: number;
   refs: string[];
@@ -35,6 +35,7 @@ export interface PublishResult {
   duplicate: boolean;
   eventId?: string;
   event?: VitalEvent;
+  events?: VitalEvent[];
 }
 
 export interface HealthResponse {

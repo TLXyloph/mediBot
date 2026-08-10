@@ -1,0 +1,94 @@
+import { appendEvent } from "@/lib/server/convex"
+import { interpretHospitalSpeech, verifyA1RelayToken, verifyA1Signature } from "@/lib/server/a1mobile"
+
+export const maxDuration = 30
+
+function xmlEscape(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+}
+
+function followUpTexml(actionUrl: string, question: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?><Response><Gather input="speech" action="${xmlEscape(actionUrl)}" method="POST" language="en-US" speechTimeout="2" timeout="10"><Say voice="Polly.Joanna-Neural" language="en-US">${xmlEscape(question)}</Say></Gather><Say voice="Polly.Joanna-Neural" language="en-US">I did not hear an additional response. We will follow up later. Goodbye.</Say><Hangup/></Response>`
+}
+
+export async function POST(request: Request) {
+  const raw = await request.text()
+  const requestUrl = new URL(request.url)
+  if (
+    !verifyA1Signature(raw, request.headers.get("x-a1-signature")) &&
+    !verifyA1RelayToken(requestUrl.searchParams.get("relay"))
+  ) {
+    return new Response("Invalid relay signature", { status: 401 })
+  }
+  const type = request.headers.get("content-type") ?? ""
+  let transcript = ""
+  if (type.includes("application/json")) {
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    transcript = String(parsed.SpeechResult ?? parsed.transcript ?? "")
+  } else {
+    const parsed = new URLSearchParams(raw)
+    transcript = parsed.get("SpeechResult") ?? parsed.get("transcript") ?? ""
+  }
+  if (!transcript.trim()) {
+    await appendEvent({
+      ts: Date.now(),
+      type: "sbar_update",
+      source: "agent",
+      role: "medic",
+      payload: { kind: "hospital_coordination", stage: "hospital_response_no_speech" },
+      conf: 0,
+      refs: [],
+    })
+    return new Response(
+      '<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Joanna-Neural" language="en-US">I did not hear a response. We will follow up later. Goodbye.</Say><Hangup/></Response>',
+      { status: 200, headers: { "content-type": "application/xml; charset=utf-8" } },
+    )
+  }
+  const result = await interpretHospitalSpeech(transcript)
+  const url = requestUrl
+  const priorAvailable = url.searchParams.get("available")
+  const available = result.available ?? (
+    result.offloadMinutes !== null
+      ? true
+      : priorAvailable === "true"
+        ? true
+        : priorAvailable === "false"
+          ? false
+          : null
+  )
+  const needsAvailability = available === null
+  const needsOffload = available === true && result.offloadMinutes === null
+  const needsFollowUp = needsAvailability || needsOffload
+  const followUpQuestion = needsAvailability
+    ? "To confirm, are you available to receive this patient? Please answer yes or no."
+    : result.followUpQuestion ?? "What is your estimated offload time in minutes?"
+  await appendEvent({
+    ts: Date.now(),
+    type: "sbar_update",
+    source: "agent",
+    role: "medic",
+    payload: {
+      kind: "hospital_coordination",
+      stage: needsFollowUp ? "hospital_response_turn" : "hospital_response",
+      transcript,
+      available,
+      offloadMinutes: result.offloadMinutes,
+      capabilities: result.capabilities,
+      reason: result.reason,
+      interpretationSource: result.source,
+    },
+    conf: result.confidence,
+    refs: [],
+  })
+  if (needsFollowUp) {
+    if (available !== null) url.searchParams.set("available", String(available))
+    return new Response(followUpTexml(url.toString(), followUpQuestion), {
+      status: 200,
+      headers: { "content-type": "application/xml; charset=utf-8" },
+    })
+  }
+  return new Response(
+    `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Joanna-Neural" language="en-US">${available === true ? "Thank you. Your availability and offload estimate have been recorded for the medic. Goodbye." : "Thank you. Your capacity response has been recorded for the medic. Goodbye."}</Say><Hangup/></Response>`,
+    { status: 200, headers: { "content-type": "application/xml; charset=utf-8" } },
+  )
+}

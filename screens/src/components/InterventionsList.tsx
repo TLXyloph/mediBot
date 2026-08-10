@@ -2,38 +2,39 @@
 
 import type { EPCRData } from "@/lib/derive"
 import type { ConvexEvent } from "@/types/events"
+import styles from "./InterventionsList.module.css"
 
-function EventRow({ e, badgeColor }: { e: ConvexEvent; badgeColor: string }) {
+function EventRow({ e, kind }: { e: ConvexEvent; kind: "medication" | "intervention" }) {
   const label = String(e.payload.name ?? e.payload.text ?? "")
   return (
-    <div className="flex items-center gap-3 py-2 border-b border-neutral-800 last:border-0">
-      <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${badgeColor}`}>
+    <div className={styles.event}>
+      <span className={`${styles.badge} ${styles[kind]}`}>
         {e.type}
       </span>
-      <span className="text-xl flex-1">{label}</span>
-      <span className="text-sm text-neutral-500">
+      <strong>{label}</strong>
+      <time>
         {new Date(e.ts).toLocaleTimeString()}
-      </span>
+      </time>
     </div>
   )
 }
 
 export function InterventionsList({ epcr }: { epcr: EPCRData }) {
   const combined = [
-    ...epcr.medications.map((e) => ({ e, color: "bg-yellow-900 text-yellow-300" })),
-    ...epcr.interventions.map((e) => ({ e, color: "bg-orange-900 text-orange-300" })),
+    ...epcr.medications.map((e) => ({ e, kind: "medication" as const })),
+    ...epcr.interventions.map((e) => ({ e, kind: "intervention" as const })),
   ].sort((a, b) => a.e.ts - b.e.ts)
 
   if (combined.length === 0) {
     return (
-      <p className="text-neutral-500 text-lg text-center py-4">None yet</p>
+      <p className={styles.empty}>None yet</p>
     )
   }
 
   return (
-    <div>
-      {combined.map(({ e, color }) => (
-        <EventRow key={e._id} e={e} badgeColor={color} />
+    <div className={styles.list}>
+      {combined.map(({ e, kind }) => (
+        <EventRow key={e._id} e={e} kind={kind} />
       ))}
     </div>
   )

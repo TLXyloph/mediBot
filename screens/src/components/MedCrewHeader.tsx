@@ -3,16 +3,20 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ClipboardPlus, Hospital, MonitorUp } from "lucide-react"
+import { ClipboardPlus, Hospital, Mic, MonitorUp, PhoneCall, Sparkles } from "lucide-react"
 
 import styles from "./MedCrewHeader.module.css"
 
 export function MedCrewHeader({ status = "Convex live" }: { status?: string }) {
   const pathname = usePathname()
+  // Labels are judge-facing and must match the /try clicking guide verbatim.
   const navItems = [
+    { href: "/", label: "Medic app", icon: Mic },
     { href: "/medic", label: "Patient record", icon: ClipboardPlus },
-    { href: "/coordinate", label: "Coordinate", icon: Hospital },
-    { href: "/monitor", label: "Monitor", icon: MonitorUp },
+    { href: "/hospital", label: "Hospital view", icon: Hospital },
+    { href: "/coordinate", label: "Call ahead", icon: PhoneCall },
+    { href: "/monitor", label: "Monitor sim", icon: MonitorUp },
+    { href: "/try", label: "Try it", icon: Sparkles },
   ]
 
   return (

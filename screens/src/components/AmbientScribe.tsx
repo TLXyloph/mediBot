@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { anyApi } from "convex/server"
+import { Mic, Square } from "lucide-react"
 import type { ConvexEvent } from "@/types/events"
 import { answerFromPatientState, type PatientStateSummary } from "@/lib/clinical"
 import { BrowserEars } from "@/lib/ears/liveEars"
@@ -163,17 +164,45 @@ export function AmbientScribe() {
   }, [events, running, speak])
 
   return (
-    <section aria-label="Ambient scribe" style={{ display: "grid", gap: "0.35rem" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-        <button type="button" onClick={running ? stop : start}>
+    <section
+      aria-label="Ambient scribe"
+      style={{
+        marginTop: "1rem",
+        padding: "0.85rem 1rem",
+        background: "var(--sand)",
+        borderLeft: "3px solid var(--orange)",
+        display: "grid",
+        gap: "0.4rem",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", flexWrap: "wrap" }}>
+        <button
+          type="button"
+          onClick={running ? stop : start}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            background: running ? "var(--ink)" : "var(--orange)",
+            color: "#fff",
+            border: 0,
+            borderRadius: "999px",
+            padding: "0.55rem 1.15rem",
+            font: "inherit",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          {running ? <Square size={16} /> : <Mic size={18} />}
           {running ? "Stop ambient scribe" : "Start ambient scribe"}
         </button>
-        <small>{status}</small>
+        <small style={{ color: "var(--muted)" }}>{status}</small>
       </div>
-      {lastLine ? <small>Last: {lastLine}</small> : null}
-      <small>
-        Continuous charting — say “Scribe” or “MedCrew” for commands. Run this OR the MB1 local
-        ears, not both.
+      {lastLine ? <small style={{ color: "var(--ink)" }}>Last: {lastLine}</small> : null}
+      <small style={{ color: "var(--muted)" }}>
+        Continuous charting — leave it on and just talk. Say “Scribe” or “MedCrew” for commands
+        (“Scribe, mark epi given” · “MedCrew, when was the last epi?”). One ambient listener at a
+        time: this or the MB1 terminal, never both.
       </small>
     </section>
   )

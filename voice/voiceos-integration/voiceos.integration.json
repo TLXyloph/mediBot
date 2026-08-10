@@ -8,8 +8,8 @@
   "description": "Ambient AI crew member for paramedics. Logs corrections, time-marks, and questions to the live patient chart by voice.",
   "runtime": {
     "kind": "local-mcp",
-    "command": "/Users/samvrithbandi/.bun/bin/bun",
-    "args": ["/Users/samvrithbandi/Desktop/hackathons/voiceOS/mediBot/voice/voiceos-integration/server.mjs"]
+    "command": "bun",
+    "args": ["server.mjs"]
   },
   "tools": [
     {

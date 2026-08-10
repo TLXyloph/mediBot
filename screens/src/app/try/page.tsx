@@ -70,6 +70,24 @@ export default function TryPage() {
         </p>
       </section>
 
+      <section style={step}>
+        <div><span style={chip}>+</span><strong>Have VoiceOS? Install MediBot as a VoiceOS app</strong></div>
+        <p style={{ margin: "0.45rem 0" }}>
+          MediBot ships as a native VoiceOS integration. On your Mac:{" "}
+          <code>git clone https://github.com/TLXyloph/mediBot</code>, then VoiceOS →{" "}
+          <strong>Apps</strong> → <strong>Install from folder</strong> →{" "}
+          <code>voice/voiceos-integration</code>. Push-to-talk and say:{" "}
+          <em>"correction — BP 90 over 60"</em> → VoiceOS answers <em>"Logged."</em> and it lands on
+          this record. Then ask: <em>"when was the last epi?"</em> — your VoiceOS speaks the answer
+          straight from the live patient state.
+        </p>
+        <p style={{ margin: "0.45rem 0", color: "var(--muted)", fontSize: "0.9rem" }}>
+          No install button in your build? Ask the VoiceOS crew here — it's their feature flag. If
+          the tool errors on launch, set the manifest's <code>command</code> to your absolute bun or
+          node path.
+        </p>
+      </section>
+
       <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
         Also in the top bar: <strong>Monitor sim</strong> — the bedside monitor our camera vision
         reads vitals from — and <strong>Call ahead</strong>, the A1mobile console that phones

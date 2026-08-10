@@ -10,7 +10,11 @@
 import { createInterface } from "node:readline";
 
 const PORT = Number(process.env.MEDIBOT_PORT || 4750);
-const BASE = `http://127.0.0.1:${PORT}`;
+const LOCAL_BASE = `http://127.0.0.1:${PORT}`;
+// Portable: on MB1 the local voice service handles commands; on any other Mac
+// (judges installing this folder) we fall through to the deployed app, which
+// appends to the same live record and returns the spoken answer text.
+const PUBLIC_BASE = (process.env.MEDIBOT_URL || "https://medcrew-nu.vercel.app").replace(/\/$/, "");
 
 const TOOLS = [
   {
@@ -46,20 +50,33 @@ const TOOLS = [
 ];
 
 async function post(path, body) {
-  const res = await fetch(`${BASE}${path}`, {
+  try {
+    const res = await fetch(`${LOCAL_BASE}${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(600),
+    });
+    if (res.ok) return res.json();
+  } catch {
+    // no local voice service — fall through to the deployed app
+  }
+  const res = await fetch(`${PUBLIC_BASE}/api/command`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(8000),
   });
-  if (!res.ok) throw new Error(`MediBot voice service replied ${res.status}`);
+  if (!res.ok) throw new Error(`MediBot replied ${res.status}`);
   return res.json();
 }
 
 async function callTool(name, args) {
   const text = String(args?.text ?? args?.question ?? "").slice(0, 2000).trim();
   if (!text) return "Nothing to log — no text provided.";
-  // Responses stay terse: VoiceOS's agent reads them aloud, and MediBot's own
-  // TTS channel is already talking — keep the double-voice to a minimum.
+  // Local path (MB1): terse replies — MediBot's own TTS is already talking.
+  // Public path (a judge's Mac): the server's `say` carries the real answer,
+  // and the judge's VoiceOS agent is MediBot's only voice — use it.
   if (name === "medibot_correction") {
     await post("/command", { text, kind: "correction" });
     return "Logged.";
@@ -69,8 +86,8 @@ async function callTool(name, args) {
     return "Marked.";
   }
   if (name === "medibot_ask") {
-    await post("/command", { text, kind: "question" });
-    return "MediBot will answer aloud.";
+    const r = await post("/command", { text, kind: "question" });
+    return typeof r?.say === "string" && r.say ? r.say : "MediBot will answer aloud.";
   }
   throw new Error(`unknown tool ${name}`);
 }

@@ -18,19 +18,33 @@ export default function MonitorPage() {
   const [fullscreen, setFullscreen] = useState(false)
   const monitorRef = useRef<HTMLElement>(null)
 
+  // Bumping the nonce restarts the 15s cycle, so a manual advance gets a full
+  // window before the auto-cycle moves on again.
+  const [cycleNonce, setCycleNonce] = useState(0)
+
   useEffect(() => {
     const updateClock = () => setClock(new Date().toLocaleTimeString([], { hour12: false }))
     const onFullscreenChange = () => setFullscreen(document.fullscreenElement === monitorRef.current)
     updateClock()
     document.addEventListener("fullscreenchange", onFullscreenChange)
     const clockTimer = setInterval(updateClock, 1000)
-    const scenarioTimer = setInterval(() => setIndex((value) => (value + 1) % scenarios.length), 15_000)
     return () => {
       clearInterval(clockTimer)
-      clearInterval(scenarioTimer)
       document.removeEventListener("fullscreenchange", onFullscreenChange)
     }
   }, [])
+
+  useEffect(() => {
+    const scenarioTimer = setInterval(() => setIndex((value) => (value + 1) % scenarios.length), 15_000)
+    return () => clearInterval(scenarioTimer)
+  }, [cycleNonce])
+
+  // Demo control: tap/click the values to jump to the next scenario instantly
+  // (e.g. force HYPOTENSION on cue for the camera beat).
+  const advance = () => {
+    setIndex((value) => (value + 1) % scenarios.length)
+    setCycleNonce((n) => n + 1)
+  }
 
   const toggleFullscreen = async () => {
     if (document.fullscreenElement) await document.exitFullscreen()
@@ -57,7 +71,17 @@ export default function MonitorPage() {
           <div><Wifi size={17} /><span>MB3 · DEMO</span><time>{clock}</time></div>
         </header>
 
-        <div className={styles.values} aria-live="polite">
+        <div
+          className={styles.values}
+          aria-live="polite"
+          role="button"
+          tabIndex={0}
+          aria-label="Advance to the next scenario"
+          onClick={advance}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") advance()
+          }}
+        >
           <article className={styles.heart}>
             <span>Heart rate</span>
             <strong>{scenario.hr}</strong>
@@ -77,7 +101,7 @@ export default function MonitorPage() {
 
         <footer className={styles.monitorFoot}>
           <strong><i />{scenario.label}</strong>
-          <span><TimerReset size={16} />Next state in 15 seconds</span>
+          <span><TimerReset size={16} />Auto-advances every 15s — tap the values to advance now</span>
           <button type="button" onClick={toggleFullscreen} aria-label={fullscreen ? "Exit full screen" : "Enter full screen"}>
             {fullscreen ? <Minimize2 size={18} /> : <Expand size={18} />}
             {fullscreen ? "Exit full screen" : "Full screen"}
